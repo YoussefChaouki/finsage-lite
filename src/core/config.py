@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     RRF_K: int = 60
     DEFAULT_TOP_K: int = 5
 
+    # Parsing
+    PARSING_TARGET_SECTIONS: list[str] = ["1", "1A", "7", "7A", "8"]
+
     # Logging
     LOG_LEVEL: str = "INFO"
 

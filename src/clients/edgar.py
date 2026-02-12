@@ -77,6 +77,7 @@ class EdgarClient:
                 "Accept": "application/json",
             },
             timeout=httpx.Timeout(30.0),
+            follow_redirects=True,
         )
 
     async def close(self) -> None:
