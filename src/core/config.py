@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSION: int = 384
 
     # Chunking
-    CHUNK_SIZE: int = 250
+    CHUNK_SIZE: int = 220  # ~35 tokens headroom for contextual prefix within MiniLM's 256-token window
     CHUNK_OVERLAP: int = 50
 
     # Search

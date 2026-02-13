@@ -39,6 +39,8 @@ class SectionChunker:
         chunk_size: int | None = None,
         chunk_overlap: int | None = None,
     ) -> None:
+        # Default 220 leaves ~35 tokens for the contextual prefix
+        # within MiniLM's 256-token window
         self._chunk_size = chunk_size if chunk_size is not None else settings.CHUNK_SIZE
         self._chunk_overlap = (
             chunk_overlap if chunk_overlap is not None else settings.CHUNK_OVERLAP

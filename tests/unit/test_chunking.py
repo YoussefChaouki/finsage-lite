@@ -13,8 +13,8 @@ from src.services.chunking import SectionChunker
 
 @pytest.fixture()
 def chunker() -> SectionChunker:
-    """SectionChunker with default settings (250 tokens, 50 overlap)."""
-    return SectionChunker(chunk_size=250, chunk_overlap=50)
+    """SectionChunker with default settings (220 tokens, 50 overlap)."""
+    return SectionChunker(chunk_size=220, chunk_overlap=50)
 
 
 def _generate_text(target_tokens: int) -> str:
@@ -30,8 +30,8 @@ def _generate_text(target_tokens: int) -> str:
 # --- Basic chunking ---
 
 
-def test_chunk_1000_tokens_produces_about_4_chunks(chunker: SectionChunker) -> None:
-    """A text of ~1000 tokens should produce ~5 chunks with 250 size and 50 overlap."""
+def test_chunk_1000_tokens_produces_about_6_chunks(chunker: SectionChunker) -> None:
+    """A text of ~1000 tokens should produce ~6 chunks with 220 size and 50 overlap."""
     text = _generate_text(1000)
     chunks = chunker.chunk_section(
         text=text,
@@ -41,8 +41,8 @@ def test_chunk_1000_tokens_produces_about_4_chunks(chunker: SectionChunker) -> N
         cik="0001234567",
         fiscal_year=2024,
     )
-    # With step=200 (250-50), 1000 tokens → ceil(1000/200) = 5 chunks
-    assert 4 <= len(chunks) <= 6
+    # With step=170 (220-50), 1000 tokens → ceil(1000/170) ≈ 6 chunks
+    assert 5 <= len(chunks) <= 7
 
 
 def test_chunk_size_within_bounds(chunker: SectionChunker) -> None:
