@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     # Embedding Model
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
     EMBEDDING_DIMENSION: int = 384
+    EMBEDDING_BATCH_SIZE: int = 64
 
     # Chunking
     CHUNK_SIZE: int = (
