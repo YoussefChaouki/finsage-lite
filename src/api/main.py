@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from src.api.routers import health
+from src.api.routers import document, health
 from src.core.config import settings
 from src.core.database import init_db
 from src.core.logging import setup_logging
@@ -40,6 +40,7 @@ app = FastAPI(
 
 # Register routers
 app.include_router(health.router, tags=["Health"])
+app.include_router(document.router, tags=["Documents"])
 
 
 @app.get("/")
