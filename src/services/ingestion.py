@@ -68,7 +68,7 @@ class IngestionService:
         ticker: str,
         fiscal_year: int,
         session: AsyncSession,
-    ) -> Document:
+    ) -> tuple[Document, int]:
         """Run the full ingestion pipeline for a single 10-K filing.
 
         Args:
@@ -77,7 +77,9 @@ class IngestionService:
             session: Async DB session for the transaction.
 
         Returns:
-            The created Document with processed=True.
+            Tuple of (Document, chunk_count). The chunk count is returned
+            separately to avoid lazy-loading the chunks relationship
+            after commit.
 
         Raises:
             DuplicateDocumentError: If the document was already ingested.
@@ -172,7 +174,7 @@ class IngestionService:
             len(all_chunks),
             document.id,
         )
-        return document
+        return document, len(all_chunks)
 
     async def _fetch_filing(self, ticker: str, fiscal_year: int) -> FilingInfo:
         """Resolve ticker and find the matching 10-K filing.

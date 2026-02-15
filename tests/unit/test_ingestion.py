@@ -179,12 +179,13 @@ class TestIngestionService:
                 [chunks[1]],  # ITEM_1A
             ]
 
-            result = await service.ingest("AAPL", 2024, mock_session)
+            result, chunk_count = await service.ingest("AAPL", 2024, mock_session)
 
             assert result.ticker == "AAPL"
             assert result.fiscal_year == 2024
             assert result.processed is True
             assert result.company_name == "Apple Inc."
+            assert chunk_count == 2
 
             # Verify pipeline steps were called
             repo_instance.get_by_ticker_and_year.assert_called_once_with("AAPL", 2024)

@@ -108,7 +108,7 @@ async def ingest_document(
     ingestion_svc = IngestionService(embedding_service=embedding_svc)
 
     try:
-        document = await ingestion_svc.ingest(
+        document, chunk_count = await ingestion_svc.ingest(
             ticker=request.ticker,
             fiscal_year=request.fiscal_year,
             session=session,
@@ -118,7 +118,7 @@ async def ingest_document(
             status="created",
             message=(
                 f"Successfully ingested {request.ticker.upper()} FY{request.fiscal_year} "
-                f"({len(document.chunks)} chunks)"
+                f"({chunk_count} chunks)"
             ),
         )
     except DuplicateDocumentError as exc:
