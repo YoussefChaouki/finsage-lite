@@ -81,7 +81,7 @@ jobs:
 
       - name: Create .env for CI
         run: |
-          cat <<'EOF' > .env
+          cat > .env <<'EOF'
           POSTGRES_USER=finsage
           POSTGRES_PASSWORD=finsage_password
           POSTGRES_DB=finsage_db
@@ -92,9 +92,11 @@ jobs:
           EDGAR_USER_AGENT=FinSage CI (ci@example.com)
           LOG_LEVEL=DEBUG
           EOF
+          sed -i 's/^[[:space:]]*//' .env
 
       - name: Start Docker Stack
         run: |
+          mkdir -p data
           docker compose up -d --build
           docker compose ps
 

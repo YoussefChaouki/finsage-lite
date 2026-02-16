@@ -99,8 +99,13 @@ class IngestionService:
         # 2–4. EDGAR: resolve CIK → list filings → download
         filing = await self._fetch_filing(ticker, fiscal_year)
 
-        async with EdgarClient() as edgar:
-            html_path = await edgar.download_filing(filing)
+        try:
+            async with EdgarClient() as edgar:
+                html_path = await edgar.download_filing(filing)
+        except EdgarClientError:
+            raise
+        except OSError as exc:
+            raise IngestionError(f"Failed to download/cache filing: {exc}") from exc
 
         logger.info("Downloaded filing to %s", html_path)
 
