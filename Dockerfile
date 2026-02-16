@@ -36,8 +36,11 @@ COPY alembic.ini .
 # Avoids cold-start download on first request
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
+# Create data directory for filing cache (writable by non-root user)
+RUN mkdir -p /app/data/filings
+
 # Security: Run as non-root user in production
-RUN useradd -m finsage
+RUN useradd -m finsage && chown -R finsage:finsage /app/data
 USER finsage
 
 EXPOSE 8000
