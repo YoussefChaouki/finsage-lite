@@ -96,7 +96,7 @@ jobs:
 
       - name: Start Docker Stack
         run: |
-          mkdir -p data
+          mkdir -p data/filings && chmod -R 777 data
           docker compose up -d --build
           docker compose ps
 
