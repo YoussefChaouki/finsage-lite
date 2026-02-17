@@ -54,3 +54,6 @@ class Document(Base):
     chunks: Mapped[list["Chunk"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "Chunk", back_populates="document", cascade="all, delete-orphan"
     )
+
+    def __repr__(self) -> str:
+        return f"<Document {self.ticker} FY{self.fiscal_year} id={self.id}>"
