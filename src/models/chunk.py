@@ -80,3 +80,6 @@ class Chunk(Base):
     document: Mapped["Document"] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "Document", back_populates="chunks"
     )
+
+    def __repr__(self) -> str:
+        return f"<Chunk #{self.chunk_index} {self.section} id={self.id}>"
