@@ -5,7 +5,7 @@ Represents a SEC 10-K filing in the database.
 """
 
 import uuid
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy import Boolean, Date, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
@@ -46,7 +46,9 @@ class Document(Base):
     source_url: Mapped[str] = mapped_column(Text, nullable=False)
     cached_path: Mapped[str] = mapped_column(Text, nullable=True)
     processed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    created_at: Mapped[datetime] = mapped_column(nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        nullable=False, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
     # Relationships
     chunks: Mapped[list["Chunk"]] = relationship(  # type: ignore[name-defined]  # noqa: F821

@@ -74,22 +74,30 @@ class ChunkRepository:
         """
         embedding_literal = f"[{','.join(str(v) for v in embedding)}]"
 
-        where_clause = ""
+        params: dict[str, object] = {
+            "embedding": embedding_literal,
+            "top_k": top_k,
+        }
+
         if document_id is not None:
-            where_clause = f"AND document_id = '{document_id}'"
+            query = text("""
+                SELECT id, (1 - (embedding <=> :embedding)) AS similarity
+                FROM chunks
+                WHERE embedding IS NOT NULL AND document_id = :doc_id
+                ORDER BY embedding <=> :embedding
+                LIMIT :top_k
+            """)
+            params["doc_id"] = str(document_id)
+        else:
+            query = text("""
+                SELECT id, (1 - (embedding <=> :embedding)) AS similarity
+                FROM chunks
+                WHERE embedding IS NOT NULL
+                ORDER BY embedding <=> :embedding
+                LIMIT :top_k
+            """)
 
-        query = text(f"""
-            SELECT id, (1 - (embedding <=> :embedding)) AS similarity
-            FROM chunks
-            WHERE embedding IS NOT NULL {where_clause}
-            ORDER BY embedding <=> :embedding
-            LIMIT :top_k
-        """)
-
-        result = await self._session.execute(
-            query,
-            {"embedding": embedding_literal, "top_k": top_k},
-        )
+        result = await self._session.execute(query, params)
         rows = result.fetchall()
 
         if not rows:
