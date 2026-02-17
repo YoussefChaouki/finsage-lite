@@ -6,7 +6,7 @@ Represents a text or table chunk from a document with embeddings.
 
 import enum
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from pgvector.sqlalchemy import Vector
@@ -72,7 +72,7 @@ class Chunk(Base):
     embedding: Mapped[Any] = mapped_column(Vector(settings.EMBEDDING_DIMENSION), nullable=False)
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
     metadata_: Mapped[dict[str, Any] | None] = mapped_column("metadata", JSONB, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(nullable=False, default=lambda: datetime.now(UTC).replace(tzinfo=None))
 
     # Relationships
     document: Mapped["Document"] = relationship(  # type: ignore[name-defined]  # noqa: F821

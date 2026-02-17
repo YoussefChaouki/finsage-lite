@@ -6,6 +6,7 @@ EDGAR → download → parse → chunk → embed → store.
 """
 
 import logging
+from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -97,15 +98,7 @@ class IngestionService:
             raise DuplicateDocumentError(existing)
 
         # 2–4. EDGAR: resolve CIK → list filings → download
-        filing = await self._fetch_filing(ticker, fiscal_year)
-
-        try:
-            async with EdgarClient() as edgar:
-                html_path = await edgar.download_filing(filing)
-        except EdgarClientError:
-            raise
-        except OSError as exc:
-            raise IngestionError(f"Failed to download/cache filing: {exc}") from exc
+        filing, html_path = await self._fetch_and_download(ticker, fiscal_year)
 
         logger.info("Downloaded filing to %s", html_path)
 
@@ -181,43 +174,57 @@ class IngestionService:
         )
         return document, len(all_chunks)
 
-    async def _fetch_filing(self, ticker: str, fiscal_year: int) -> FilingInfo:
-        """Resolve ticker and find the matching 10-K filing.
+    async def _fetch_and_download(self, ticker: str, fiscal_year: int) -> tuple[FilingInfo, Path]:
+        """Resolve ticker, find the matching 10-K filing, and download it.
+
+        Uses a single EdgarClient instance for the entire EDGAR interaction
+        (CIK resolution + filing listing + download).
 
         Args:
             ticker: Stock ticker symbol.
             fiscal_year: Target fiscal year.
 
         Returns:
-            FilingInfo for the matching filing.
+            Tuple of (FilingInfo, local_path) for the downloaded filing.
 
         Raises:
             TickerNotFoundError: If ticker cannot be resolved.
             FilingNotFoundError: If no 10-K matches the fiscal year.
-            IngestionError: On EDGAR API errors.
+            IngestionError: On EDGAR API or download errors.
         """
+
         try:
             async with EdgarClient() as edgar:
                 cik = await edgar.resolve_cik(ticker)
                 filings = await edgar.get_10k_filings(cik, count=10)
-        except (TickerNotFoundError, FilingNotFoundError):
-            raise
-        except EdgarClientError as exc:
-            raise IngestionError(f"EDGAR API error: {exc}") from exc
 
-        # Find the filing matching the requested fiscal year
-        for filing in filings:
-            if filing.fiscal_year == fiscal_year:
+                # Find the filing matching the requested fiscal year
+                matched: FilingInfo | None = None
+                for filing in filings:
+                    if filing.fiscal_year == fiscal_year:
+                        matched = filing
+                        break
+
+                if matched is None:
+                    available_years = sorted({f.fiscal_year for f in filings}, reverse=True)
+                    raise FilingNotFoundError(
+                        f"No 10-K filing found for {ticker} FY{fiscal_year}. "
+                        f"Available years: {available_years}"
+                    )
+
                 logger.info(
                     "Found 10-K for %s FY%d: accession=%s",
                     ticker,
                     fiscal_year,
-                    filing.accession_number,
+                    matched.accession_number,
                 )
-                return filing
 
-        available_years = sorted({f.fiscal_year for f in filings}, reverse=True)
-        raise FilingNotFoundError(
-            f"No 10-K filing found for {ticker} FY{fiscal_year}. "
-            f"Available years: {available_years}"
-        )
+                html_path: Path = await edgar.download_filing(matched)
+        except (TickerNotFoundError, FilingNotFoundError):
+            raise
+        except EdgarClientError:
+            raise
+        except OSError as exc:
+            raise IngestionError(f"Failed to download/cache filing: {exc}") from exc
+
+        return matched, html_path

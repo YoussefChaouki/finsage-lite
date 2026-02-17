@@ -381,7 +381,7 @@ class TestDocumentRouter:
     @pytest.mark.asyncio(loop_scope="session")
     async def test_document_response_schema(self) -> None:
         """DocumentResponse serializes correctly."""
-        from datetime import datetime
+        from datetime import UTC, datetime
 
         from src.schemas.document import DocumentResponse, SectionSummary
 
@@ -396,7 +396,7 @@ class TestDocumentRouter:
             accession_no="0000320193-24-000081",
             source_url="https://sec.gov/...",
             processed=True,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
             num_chunks=100,
             sections=[
                 SectionSummary(
