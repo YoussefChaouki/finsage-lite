@@ -5,6 +5,8 @@ Database access layer for chunk storage and vector similarity search.
 All SQL operations go through this repository — never in services or routers.
 """
 
+from __future__ import annotations
+
 import logging
 import uuid
 
@@ -12,6 +14,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.chunk import Chunk
+from src.schemas.search import SearchFilters
 
 logger = logging.getLogger(__name__)
 
@@ -57,17 +60,22 @@ class ChunkRepository:
         self,
         embedding: list[float],
         top_k: int = 5,
-        document_id: uuid.UUID | None = None,
+        filters: SearchFilters | None = None,
     ) -> list[tuple[Chunk, float]]:
         """Find the most similar chunks using cosine distance.
 
         Uses pgvector's <=> operator (cosine distance).
         Similarity = 1 - distance.
 
+        Supports pre-filtering by document_id, section list, fiscal_year, and
+        company name/ticker. Filters involving Document columns (fiscal_year,
+        company) trigger an implicit JOIN with the documents table.
+
         Args:
             embedding: Query embedding vector (384-dim).
             top_k: Number of results to return.
-            document_id: Optional filter to restrict search to a document.
+            filters: Optional SearchFilters to narrow the candidate set before
+                ranking. All filter fields are optional; unset fields are ignored.
 
         Returns:
             List of (Chunk, similarity_score) tuples, highest similarity first.
@@ -79,25 +87,43 @@ class ChunkRepository:
             "top_k": top_k,
         }
 
-        if document_id is not None:
-            query = text("""
-                SELECT id, (1 - (embedding <=> :embedding)) AS similarity
-                FROM chunks
-                WHERE embedding IS NOT NULL AND document_id = :doc_id
-                ORDER BY embedding <=> :embedding
-                LIMIT :top_k
-            """)
-            params["doc_id"] = str(document_id)
-        else:
-            query = text("""
-                SELECT id, (1 - (embedding <=> :embedding)) AS similarity
-                FROM chunks
-                WHERE embedding IS NOT NULL
-                ORDER BY embedding <=> :embedding
-                LIMIT :top_k
-            """)
+        where_clauses: list[str] = ["c.embedding IS NOT NULL"]
+        needs_doc_join = False
 
-        result = await self._session.execute(query, params)
+        if filters is not None:
+            if filters.document_id is not None:
+                where_clauses.append("c.document_id = :document_id")
+                params["document_id"] = str(filters.document_id)
+
+            if filters.sections:
+                placeholders = ", ".join(f":section_{i}" for i in range(len(filters.sections)))
+                where_clauses.append(f"c.section IN ({placeholders})")
+                for i, section in enumerate(filters.sections):
+                    params[f"section_{i}"] = section.value
+
+            if filters.fiscal_year is not None:
+                where_clauses.append("d.fiscal_year = :fiscal_year")
+                params["fiscal_year"] = filters.fiscal_year
+                needs_doc_join = True
+
+            if filters.company is not None:
+                where_clauses.append("(d.company_name ILIKE :company OR d.ticker ILIKE :company)")
+                params["company"] = f"%{filters.company}%"
+                needs_doc_join = True
+
+        join_clause = "JOIN documents d ON d.id = c.document_id" if needs_doc_join else ""
+        where_str = " AND ".join(where_clauses)
+
+        sql = f"""
+            SELECT c.id, (1 - (c.embedding <=> :embedding)) AS similarity
+            FROM chunks c
+            {join_clause}
+            WHERE {where_str}
+            ORDER BY c.embedding <=> :embedding
+            LIMIT :top_k
+        """
+
+        result = await self._session.execute(text(sql), params)
         rows = result.fetchall()
 
         if not rows:
@@ -105,7 +131,7 @@ class ChunkRepository:
 
         # Fetch full Chunk objects for the returned IDs
         chunk_ids = [row[0] for row in rows]
-        similarity_map = {row[0]: row[1] for row in rows}
+        similarity_map: dict[uuid.UUID, float] = {row[0]: float(row[1]) for row in rows}
 
         stmt = select(Chunk).where(Chunk.id.in_(chunk_ids))
         chunk_result = await self._session.execute(stmt)

@@ -196,11 +196,13 @@ async def test_cosine_similarity_search_returns_relevant_chunk(
         query = "How much revenue did iPhone generate?"
         query_embedding = service.embed_texts([query])[0]
 
+        from src.schemas.search import SearchFilters
+
         repo = ChunkRepository(session)
         results = await repo.search_by_cosine_similarity(
             embedding=query_embedding,
             top_k=2,
-            document_id=doc_id,
+            filters=SearchFilters(document_id=doc_id),
         )
 
         assert len(results) == 2
