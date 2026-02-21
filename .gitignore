@@ -209,3 +209,5 @@ __marimo__/
 # Data files
 data/filings/*.html
 data/filings/*.htm
+
+.DS_Store
