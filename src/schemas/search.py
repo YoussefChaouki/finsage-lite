@@ -1,9 +1,9 @@
 """
 Search Schemas
 
-Pydantic v2 request/response schemas for the dense retrieval layer.
-Additional schemas (SearchRequest, SearchResult, SearchResponse) will be
-added in Sprint 2 Task 2.5 when the full search endpoint is wired up.
+Pydantic v2 request/response schemas for the search layer.
+Covers dense retrieval (DenseResult), sparse BM25 retrieval (SparseResult),
+and shared filter/request types.
 """
 
 from __future__ import annotations
@@ -53,4 +53,28 @@ class DenseResult(BaseModel):
     section: SectionType
     section_title: str
     score: float
+    metadata: dict[str, Any]
+
+
+class SparseResult(BaseModel):
+    """A single result from sparse (BM25) retrieval.
+
+    Attributes:
+        chunk_id: Unique identifier of the chunk.
+        document_id: Parent document UUID.
+        content: Raw text content of the chunk (human-readable).
+        section: SEC 10-K section this chunk belongs to.
+        section_title: Human-readable section title.
+        bm25_score: Raw BM25 score; higher means more lexically relevant.
+        rank: 1-based rank within the result list (1 = best).
+        metadata: Additional metadata dict (page_approx, table_title, etc.).
+    """
+
+    chunk_id: uuid.UUID
+    document_id: uuid.UUID
+    content: str
+    section: SectionType
+    section_title: str
+    bm25_score: float
+    rank: int
     metadata: dict[str, Any]
