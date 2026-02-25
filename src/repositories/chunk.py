@@ -9,11 +9,14 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import Sequence
+from typing import Any
 
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.chunk import Chunk
+from src.models.document import Document
 from src.schemas.search import SearchFilters
 
 logger = logging.getLogger(__name__)
@@ -157,3 +160,35 @@ class ChunkRepository:
         count = int(cursor.rowcount)  # type: ignore[attr-defined]
         logger.info("Deleted %d chunks for document %s", count, document_id)
         return count
+
+    async def get_all_for_bm25(self) -> Sequence[Any]:
+        """Fetch all chunks with document metadata needed for BM25 index building.
+
+        Selects only the columns required by BM25Service — the embedding vector
+        is intentionally excluded to reduce memory pressure. A JOIN with the
+        documents table provides fiscal_year, company_name, and ticker so the
+        service can apply post-retrieval filters without an extra DB round-trip.
+
+        For corpora exceeding 100k chunks the query uses ``yield_per`` server-
+        side streaming to avoid materialising the full result set at once.
+
+        Returns:
+            Sequence of Row objects with named attributes:
+            ``chunk_id``, ``document_id``, ``content_raw``, ``section``,
+            ``section_title``, ``metadata``, ``fiscal_year``,
+            ``company_name``, ``ticker``.
+        """
+        stmt = select(
+            Chunk.id.label("chunk_id"),
+            Chunk.document_id,
+            Chunk.content_raw,
+            Chunk.section,
+            Chunk.section_title,
+            Chunk.metadata_.label("metadata"),
+            Document.fiscal_year,
+            Document.company_name,
+            Document.ticker,
+        ).join(Document, Chunk.document_id == Document.id)
+
+        result = await self._session.execute(stmt)
+        return result.all()
