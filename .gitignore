@@ -211,3 +211,6 @@ data/filings/*.html
 data/filings/*.htm
 
 .DS_Store
+
+# Local scratch notes
+.scratch/
