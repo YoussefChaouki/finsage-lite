@@ -8,13 +8,15 @@ import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 
-from src.api.routers import document, health
+from src.api.routers import document, health, search
 from src.core.config import settings
 from src.core.database import AsyncSessionLocal, init_db
 from src.core.logging import setup_logging
 from src.services.bm25_service import BM25Service
+from src.services.embedding import EmbeddingService
+from src.services.hyde_service import HyDEService
 
 logger = logging.getLogger(__name__)
 
@@ -25,12 +27,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Application lifespan context manager.
 
     Handles:
-    - Startup: Logging setup, database init, BM25 index construction.
-    - Shutdown: Cleanup (currently none).
+    - Startup: Logging setup, database init, singleton service construction.
+    - Shutdown: Close the HyDE httpx client.
+
+    Singletons stored in app.state:
+        embedding_service: Sentence-transformers model (loaded once).
+        hyde_service: HyDE Ollama client with graceful degradation.
+        bm25_service: In-memory BM25 index over all chunk content_raw.
     """
     # Startup
     setup_logging()
     await init_db()
+
+    embedding_service = EmbeddingService()
+    app.state.embedding_service = embedding_service
+
+    hyde_service = HyDEService(embedding_service=embedding_service)
+    app.state.hyde_service = hyde_service
 
     bm25_service = BM25Service()
     async with AsyncSessionLocal() as db:
@@ -38,19 +51,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.bm25_service = bm25_service
 
     yield
-    # Shutdown (cleanup if needed)
 
-
-def get_bm25_service(request: Request) -> BM25Service:
-    """FastAPI dependency that returns the singleton BM25Service.
-
-    Args:
-        request: Current FastAPI request (injected automatically).
-
-    Returns:
-        The BM25Service instance stored in application state.
-    """
-    return request.app.state.bm25_service  # type: ignore[no-any-return]
+    # Shutdown — release httpx connection pool
+    await hyde_service.aclose()
 
 
 app = FastAPI(
@@ -63,6 +66,7 @@ app = FastAPI(
 # Register routers
 app.include_router(health.router, tags=["Health"])
 app.include_router(document.router, tags=["Documents"])
+app.include_router(search.router)
 
 
 @app.get("/")
