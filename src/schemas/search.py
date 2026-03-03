@@ -3,13 +3,13 @@ Search Schemas
 
 Pydantic v2 request/response schemas for the search layer.
 Covers dense retrieval (DenseResult), sparse BM25 retrieval (SparseResult),
-and shared filter/request types.
+hybrid results (SearchResult), and API request/response types.
 """
 
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -78,3 +78,83 @@ class SparseResult(BaseModel):
     bm25_score: float
     rank: int
     metadata: dict[str, Any]
+
+
+class SearchResult(BaseModel):
+    """A single result from hybrid (RRF-fused) retrieval.
+
+    Attributes:
+        chunk_id: Unique identifier of the chunk.
+        document_id: Parent document UUID.
+        content: Raw text content of the chunk (human-readable).
+        section: SEC 10-K section this chunk belongs to.
+        section_title: Human-readable section title.
+        score: RRF-normalised score in [0, 1]; higher is more relevant.
+        dense_score: Original cosine similarity score (debug/comparison).
+        sparse_score: Original BM25 score (debug/comparison).
+        metadata: Additional metadata dict (page_approx, table_title, etc.).
+    """
+
+    chunk_id: uuid.UUID
+    document_id: uuid.UUID
+    content: str
+    section: SectionType
+    section_title: str
+    score: float
+    dense_score: float | None = None
+    sparse_score: float | None = None
+    metadata: dict[str, Any]
+
+
+class SearchRequest(BaseModel):
+    """Request body for POST /api/v1/search.
+
+    Attributes:
+        query: Natural language question or keyword query.
+        top_k: Number of results to return (1–20).
+        search_mode: Retrieval strategy to use.
+        use_hyde: Whether to attempt HyDE query expansion before dense search.
+        filters: Optional pre-filtering criteria applied before retrieval.
+    """
+
+    query: str
+    top_k: int = Field(default=5, ge=1, le=20)
+    search_mode: Literal["dense", "sparse", "hybrid"] = "hybrid"
+    use_hyde: bool = False
+    filters: SearchFilters = Field(default_factory=SearchFilters)
+
+
+class SearchResponse(BaseModel):
+    """Response body for POST /api/v1/search.
+
+    Attributes:
+        results: Ordered list of matching chunks (best first).
+        total: Number of results returned.
+        query: Echo of the original query string.
+        search_mode: Echo of the search mode used.
+        hyde_used: True if HyDE expansion was actually applied.
+        latency_ms: End-to-end retrieval latency in milliseconds.
+    """
+
+    results: list[SearchResult]
+    total: int
+    query: str
+    search_mode: str
+    hyde_used: bool
+    latency_ms: float
+
+
+class SearchHealthResponse(BaseModel):
+    """Response body for GET /api/v1/search/health.
+
+    Attributes:
+        bm25_index_size: Number of chunks currently in the BM25 index.
+        bm25_is_built: True if the BM25 index has been built.
+        hyde_available: True if the Ollama server is reachable.
+        ollama_model: Name of the configured Ollama model.
+    """
+
+    bm25_index_size: int
+    bm25_is_built: bool
+    hyde_available: bool
+    ollama_model: str
