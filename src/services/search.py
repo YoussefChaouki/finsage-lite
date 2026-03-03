@@ -107,3 +107,57 @@ class DenseSearchService:
         # to guarantee the contract regardless of future repository changes.
         results.sort(key=lambda r: r.score, reverse=True)
         return results
+
+    async def dense_search_with_embedding(
+        self,
+        query_embedding: list[float],
+        top_k: int | None = None,
+        filters: SearchFilters | None = None,
+    ) -> list[DenseResult]:
+        """Perform dense retrieval using a pre-computed query embedding.
+
+        Skips query encoding — useful when the caller has already generated
+        the embedding (e.g. via HyDE expansion).
+
+        Args:
+            query_embedding: Pre-computed query vector (must match index dim).
+            top_k: Number of results to return. Defaults to settings.DEFAULT_TOP_K.
+            filters: Optional pre-filtering criteria. Defaults to no filtering.
+
+        Returns:
+            List of DenseResult objects sorted by score descending.
+        """
+        resolved_top_k = top_k if top_k is not None else settings.DEFAULT_TOP_K
+        resolved_filters = filters if filters is not None else SearchFilters()
+
+        t0 = time.monotonic()
+
+        rows = await self._chunk_repo.search_by_cosine_similarity(
+            embedding=query_embedding,
+            top_k=resolved_top_k,
+            filters=resolved_filters,
+        )
+
+        elapsed_ms = (time.monotonic() - t0) * 1000
+        logger.debug(
+            "dense_search_with_embedding finished in %.1fms — %d results (top_k=%d)",
+            elapsed_ms,
+            len(rows),
+            resolved_top_k,
+        )
+
+        results = [
+            DenseResult(
+                chunk_id=chunk.id,
+                document_id=chunk.document_id,
+                content=chunk.content_raw,
+                section=chunk.section,
+                section_title=chunk.section_title or "",
+                score=score,
+                metadata=chunk.metadata_ or {},
+            )
+            for chunk, score in rows
+        ]
+
+        results.sort(key=lambda r: r.score, reverse=True)
+        return results
