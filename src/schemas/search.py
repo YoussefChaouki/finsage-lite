@@ -128,6 +128,7 @@ class SearchResponse(BaseModel):
     """Response body for POST /api/v1/search.
 
     Attributes:
+        answer: LLM-generated answer (null until Sprint 3 generation layer).
         results: Ordered list of matching chunks (best first).
         total: Number of results returned.
         query: Echo of the original query string.
@@ -136,6 +137,7 @@ class SearchResponse(BaseModel):
         latency_ms: End-to-end retrieval latency in milliseconds.
     """
 
+    answer: str | None = None
     results: list[SearchResult]
     total: int
     query: str

@@ -238,9 +238,14 @@ class RetrievalService:
         top_k: int,
         filters: SearchFilters,
     ) -> tuple[list[DenseResult], list[SparseResult]]:
-        """Run dense and sparse searches in sequence and return both lists."""
-        dense = await self._run_dense(query, query_embedding, top_k, filters)
-        sparse = await self._bm25.search(query=query, top_k=top_k, filters=filters)
+        """Run dense and sparse searches and return both candidate lists.
+
+        Uses a larger intermediate candidate pool (at least 20) for better
+        RRF coverage before the final top_k slice is applied.
+        """
+        candidate_k = max(20, top_k)
+        dense = await self._run_dense(query, query_embedding, candidate_k, filters)
+        sparse = await self._bm25.search(query=query, top_k=candidate_k, filters=filters)
         return dense, sparse
 
 
