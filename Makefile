@@ -7,7 +7,8 @@
 .PHONY: help setup install run test test-unit test-int \
         lint format type-check check \
         docker-up docker-down docker-logs rebuild \
-        db-shell migrate seed evaluate evaluate-report clean
+        db-shell migrate seed evaluate evaluate-report \
+        benchmark rebuild-bm25 clean
 
 # ==============================================================================
 # Help
@@ -120,6 +121,12 @@ evaluate: ## Run RAG evaluation harness
 
 evaluate-report: ## Generate evaluation report
 	python evaluation/report_generator.py
+
+benchmark: ## Run search latency benchmarks and write BENCHMARK.md
+	python scripts/benchmark_search.py --output BENCHMARK.md
+
+rebuild-bm25: ## Rebuild the in-memory BM25 index via the API
+	curl -s -X POST http://localhost:8000/api/v1/search/rebuild-index | python -m json.tool
 
 # ==============================================================================
 # Cleanup
