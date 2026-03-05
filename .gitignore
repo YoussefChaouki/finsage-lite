@@ -214,3 +214,5 @@ data/filings/*.htm
 
 # Local scratch notes
 .scratch/
+
+.dev/
