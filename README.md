@@ -127,6 +127,14 @@ Key settings via `.env` (see [.env.example](.env.example)):
 | `CHUNK_OVERLAP` | `50` | Token overlap between chunks |
 | `POSTGRES_*` | see file | Database connection |
 
+## Architecture & Decisions
+
+Architecture documentation and technical decision records are in `docs/`:
+
+- **[System Overview](docs/architecture/system-overview.md)** — Component diagram and data flow
+- **[Scaling Considerations](docs/architecture/scaling-considerations.md)** — Production scaling paths
+- **[ADRs](docs/adr/)** — Key technical decisions with context and tradeoffs
+
 ## License
 
 MIT
