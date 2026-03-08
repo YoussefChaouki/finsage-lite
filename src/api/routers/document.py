@@ -7,7 +7,7 @@ Endpoints for document ingestion, listing, and detail retrieval.
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.clients.edgar import FilingNotFoundError, TickerNotFoundError
@@ -32,16 +32,17 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/documents")
 
-# Module-level singleton — model loaded once, reused across requests
-_embedding_service: EmbeddingService | None = None
 
+def get_embedding_service(request: Request) -> EmbeddingService:
+    """Return the singleton EmbeddingService from application state.
 
-def _get_embedding_service() -> EmbeddingService:
-    """Lazy-init singleton for the embedding service."""
-    global _embedding_service  # noqa: PLW0603
-    if _embedding_service is None:
-        _embedding_service = EmbeddingService()
-    return _embedding_service
+    Args:
+        request: Current FastAPI request (injected automatically).
+
+    Returns:
+        The EmbeddingService instance initialized at startup.
+    """
+    return request.app.state.embedding_service  # type: ignore[no-any-return]
 
 
 def _build_document_response(doc: Document) -> DocumentResponse:
@@ -92,6 +93,7 @@ def _build_document_response(doc: Document) -> DocumentResponse:
 async def ingest_document(
     request: IngestRequest,
     session: AsyncSession = Depends(get_db),
+    embedding_svc: EmbeddingService = Depends(get_embedding_service),
 ) -> IngestResponse:
     """Ingest a SEC 10-K filing.
 
@@ -100,11 +102,11 @@ async def ingest_document(
     Args:
         request: Ticker and fiscal year to ingest.
         session: Database session (injected).
+        embedding_svc: Shared embedding service singleton (injected).
 
     Returns:
         IngestResponse with document ID and status.
     """
-    embedding_svc = _get_embedding_service()
     ingestion_svc = IngestionService(embedding_service=embedding_svc)
 
     try:
