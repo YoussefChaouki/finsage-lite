@@ -5,9 +5,12 @@ Tests chunk size, overlap, metadata correctness, prefix formatting,
 and edge cases (empty text, single-chunk text, exact boundary).
 """
 
+import json
+
 import pytest
 
 from src.models.chunk import ContentType, SectionType
+from src.schemas.table import StructuredTable
 from src.services.chunking import SectionChunker
 
 
@@ -387,3 +390,185 @@ def test_all_text_covered(chunker: SectionChunker) -> None:
         covered_words.update(chunk.content_raw.split())
     missing = input_words - covered_words
     assert not missing, f"Missing words: {missing}"
+
+
+# ---------------------------------------------------------------------------
+# chunk_tables() tests
+# ---------------------------------------------------------------------------
+
+
+def _make_table(title: str = "Revenue Summary", row_count: int = 3) -> StructuredTable:
+    """Build a minimal StructuredTable fixture."""
+    headers = ["Item", "2024", "2023"]
+    rows = [
+        {"Item": f"Row {i}", "2024": str(i * 100), "2023": str(i * 90)}
+        for i in range(1, row_count + 1)
+    ]
+    return StructuredTable(
+        title=title,
+        headers=headers,
+        rows=rows,
+        row_count=row_count,
+        source_section="ITEM_8",
+    )
+
+
+@pytest.fixture()
+def two_tables() -> list[StructuredTable]:
+    return [_make_table("Revenue Summary"), _make_table("Operating Expenses", row_count=2)]
+
+
+def test_chunk_tables_empty_returns_empty_list(chunker: SectionChunker) -> None:
+    """Empty table list produces no chunks."""
+    result = chunker.chunk_tables(
+        tables=[],
+        section=SectionType.ITEM_8,
+        section_title="Financial Statements",
+        company_name="Test Corp",
+        cik="0001234567",
+        fiscal_year=2024,
+    )
+    assert result == []
+
+
+def test_chunk_tables_two_tables_two_chunks(
+    chunker: SectionChunker, two_tables: list[StructuredTable]
+) -> None:
+    """Two tables produce exactly two ChunkData objects."""
+    chunks = chunker.chunk_tables(
+        tables=two_tables,
+        section=SectionType.ITEM_8,
+        section_title="Financial Statements",
+        company_name="Test Corp",
+        cik="0001234567",
+        fiscal_year=2024,
+    )
+    assert len(chunks) == 2
+
+
+def test_chunk_tables_content_type_is_table(
+    chunker: SectionChunker, two_tables: list[StructuredTable]
+) -> None:
+    """All table chunks have ContentType.TABLE."""
+    chunks = chunker.chunk_tables(
+        tables=two_tables,
+        section=SectionType.ITEM_8,
+        section_title="Financial Statements",
+        company_name="Test Corp",
+        cik="0001234567",
+        fiscal_year=2024,
+    )
+    for chunk in chunks:
+        assert chunk.content_type == ContentType.TABLE
+
+
+def test_chunk_tables_content_raw_is_description_not_json(
+    chunker: SectionChunker,
+) -> None:
+    """content_raw is the plain-text description, not raw JSON."""
+    table = _make_table("Income Statement")
+    chunks = chunker.chunk_tables(
+        tables=[table],
+        section=SectionType.ITEM_8,
+        section_title="Financial Statements",
+        company_name="Acme Inc.",
+        cik="0009999999",
+        fiscal_year=2024,
+    )
+    assert len(chunks) == 1
+    raw = chunks[0].content_raw
+    # Should start with the description preamble, not a JSON brace
+    assert raw.startswith("Financial table:")
+    assert not raw.startswith("{")
+
+
+def test_chunk_tables_metadata_table_data_parseable_json(
+    chunker: SectionChunker,
+) -> None:
+    """metadata['table_data'] deserialises to a dict with 'headers' and 'rows'."""
+    table = _make_table()
+    chunks = chunker.chunk_tables(
+        tables=[table],
+        section=SectionType.ITEM_8,
+        section_title="Financial Statements",
+        company_name="Test Corp",
+        cik="0001234567",
+        fiscal_year=2024,
+    )
+    table_data = json.loads(str(chunks[0].metadata["table_data"]))
+    assert "headers" in table_data
+    assert "rows" in table_data
+    assert isinstance(table_data["rows"], list)
+
+
+def test_chunk_tables_metadata_table_title_present(chunker: SectionChunker) -> None:
+    """metadata['table_title'] matches the StructuredTable title."""
+    table = _make_table("Consolidated Balance Sheet")
+    chunks = chunker.chunk_tables(
+        tables=[table],
+        section=SectionType.ITEM_8,
+        section_title="Financial Statements",
+        company_name="Test Corp",
+        cik="0001234567",
+        fiscal_year=2024,
+    )
+    assert chunks[0].metadata["table_title"] == "Consolidated Balance Sheet"
+
+
+def test_chunk_tables_metadata_table_row_count(chunker: SectionChunker) -> None:
+    """metadata['table_row_count'] equals the table's row_count."""
+    table = _make_table(row_count=5)
+    chunks = chunker.chunk_tables(
+        tables=[table],
+        section=SectionType.ITEM_8,
+        section_title="Financial Statements",
+        company_name="Test Corp",
+        cik="0001234567",
+        fiscal_year=2024,
+    )
+    assert chunks[0].metadata["table_row_count"] == 5
+
+
+def test_chunk_tables_content_context_starts_with_prefix(chunker: SectionChunker) -> None:
+    """content_context starts with the expected contextual prefix."""
+    table = _make_table()
+    chunks = chunker.chunk_tables(
+        tables=[table],
+        section=SectionType.ITEM_8,
+        section_title="Financial Statements",
+        company_name="Acme Inc.",
+        cik="0009999999",
+        fiscal_year=2023,
+    )
+    expected_prefix = "[Acme Inc. | 10-K FY2023 | Financial Statements]"
+    assert chunks[0].content_context.startswith(expected_prefix)
+    assert f"{expected_prefix}\n\n" in chunks[0].content_context
+
+
+def test_chunk_tables_chunk_index_offset(chunker: SectionChunker) -> None:
+    """chunk_index starts at chunk_index_offset and increments by 1 per table."""
+    tables = [_make_table(f"Table {i}") for i in range(3)]
+    offset = 7
+    chunks = chunker.chunk_tables(
+        tables=tables,
+        section=SectionType.ITEM_8,
+        section_title="Financial Statements",
+        company_name="Test Corp",
+        cik="0001234567",
+        fiscal_year=2024,
+        chunk_index_offset=offset,
+    )
+    assert [c.chunk_index for c in chunks] == [7, 8, 9]
+
+
+def test_chunk_tables_default_offset_is_zero(chunker: SectionChunker) -> None:
+    """With no offset, chunk_index starts at 0."""
+    chunks = chunker.chunk_tables(
+        tables=[_make_table()],
+        section=SectionType.ITEM_8,
+        section_title="Financial Statements",
+        company_name="Test Corp",
+        cik="0001234567",
+        fiscal_year=2024,
+    )
+    assert chunks[0].chunk_index == 0
