@@ -16,6 +16,7 @@ from bs4 import BeautifulSoup, Tag, XMLParsedAsHTMLWarning
 from src.core.config import settings
 from src.models.chunk import SectionType
 from src.schemas.parsing import FilingMetadata, ParsedFiling, SectionContent
+from src.services.table_parser import TableParser
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +97,7 @@ class FilingParser:
         self._target_sections = [
             s.lower() for s in (target_sections or settings.PARSING_TARGET_SECTIONS)
         ]
+        self._table_parser = TableParser()
 
     def parse_html(self, html_path: Path) -> ParsedFiling:
         """Parse a 10-K HTML filing and split into sections.
@@ -376,11 +378,14 @@ class FilingParser:
                 )
                 continue
 
+            tables = self._table_parser.parse_all(html_content)
+
             sections[section_type] = SectionContent(
                 section_type=section_type,
                 title=heading.title,
                 html_content=html_content,
                 text_content=cleaned_text,
+                tables=tables,
             )
             logger.debug(
                 "Extracted Item %s: %d chars",
@@ -416,7 +421,11 @@ class FilingParser:
                 if next_heading_element is not None and sibling is next_heading_element:
                     break
                 html_parts.append(str(sibling))
-                text = sibling.get_text(separator=" ", strip=True)
+                # Strip tables from a copy so text_content has no tabular data
+                sibling_copy = BeautifulSoup(str(sibling), "lxml")
+                for t in sibling_copy.find_all("table"):
+                    t.decompose()
+                text = sibling_copy.get_text(separator=" ", strip=True)
                 if text:
                     text_parts.append(text)
             sibling = sibling.next_sibling

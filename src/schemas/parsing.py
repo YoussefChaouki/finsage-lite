@@ -7,6 +7,7 @@ Pydantic schemas for HTML filing parsing output.
 from pydantic import BaseModel, Field
 
 from src.models.chunk import SectionType
+from src.schemas.table import StructuredTable
 
 
 class FilingMetadata(BaseModel):
@@ -41,6 +42,7 @@ class SectionContent(BaseModel):
     title: str
     html_content: str
     text_content: str
+    tables: list[StructuredTable] = Field(default_factory=list)
 
 
 class ParsedFiling(BaseModel):
