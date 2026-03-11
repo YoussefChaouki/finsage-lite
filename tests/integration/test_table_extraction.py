@@ -111,10 +111,13 @@ def test_revenue_query_returns_financial_data(api_client: httpx.Client) -> None:
         f"Sections returned: {[r['section'] for r in results]}"
     )
 
-    dollar_re = re.compile(r"\$[\d]")
+    # EDGAR tables split "$" and the number into adjacent cells, producing
+    # descriptions like "Total net sales: ..., $, 391035.0, ..." rather than
+    # "$391,035". The regex matches both formats: "$391" and "$, 391".
+    dollar_re = re.compile(r"\$[\s,]*\d")
     has_dollar = any(dollar_re.search(r["content"]) for r in results)
     assert has_dollar, (
-        "Expected at least one result containing a dollar figure (e.g. '$391'). "
+        "Expected at least one result containing a dollar figure (e.g. '$391' or '$, 391035'). "
         f"Content samples: {[r['content'][:100] for r in results[:3]]}"
     )
 
