@@ -13,6 +13,7 @@ import tiktoken
 from src.core.config import settings
 from src.models.chunk import ContentType, SectionType
 from src.schemas.chunking import ChunkData
+from src.schemas.table import StructuredTable
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +131,79 @@ class SectionChunker:
             total_chunks,
             self._chunk_size,
             self._chunk_overlap,
+        )
+        return chunks
+
+    def chunk_tables(
+        self,
+        tables: list[StructuredTable],
+        section: SectionType,
+        section_title: str,
+        company_name: str,
+        cik: str,
+        fiscal_year: int,
+        chunk_index_offset: int = 0,
+    ) -> list[ChunkData]:
+        """Produce one ChunkData per table (no splitting — 1 table = 1 chunk).
+
+        Each chunk carries the table's plain-text description in ``content_raw``
+        (for BM25) and a prefixed version in ``content_context`` (for embedding).
+        The original structured data is preserved in ``metadata["table_data"]``
+        as a compact JSON string.
+
+        Args:
+            tables: Parsed StructuredTable objects from a filing section.
+            section: SectionType enum value.
+            section_title: Human-readable section title (e.g. "Financial Statements").
+            company_name: Company name for the context prefix.
+            cik: Central Index Key.
+            fiscal_year: Fiscal year (e.g. 2024).
+            chunk_index_offset: Starting value for chunk_index, to avoid
+                collisions when table chunks follow text chunks.
+
+        Returns:
+            List of ChunkData objects, one per table. Empty list when tables is empty.
+        """
+        if not tables:
+            return []
+
+        prefix = self._build_prefix(company_name, fiscal_year, section_title)
+        chunks: list[ChunkData] = []
+
+        for i, table in enumerate(tables):
+            description = table.to_description(company_name, fiscal_year, section_title)
+            content_context = f"{prefix}\n\n{description}"
+            chunk_index = chunk_index_offset + i
+
+            metadata: dict[str, object] = {
+                "company": company_name,
+                "cik": cik,
+                "fiscal_year": fiscal_year,
+                "section": section.value,
+                "section_title": section_title,
+                "chunk_index": chunk_index,
+                "table_data": table.to_json_str(),
+                "table_title": table.title,
+                "table_row_count": table.row_count,
+            }
+
+            chunks.append(
+                ChunkData(
+                    section=section,
+                    section_title=section_title,
+                    content_type=ContentType.TABLE,
+                    content_raw=description,
+                    content_context=content_context,
+                    chunk_index=chunk_index,
+                    metadata=metadata,
+                )
+            )
+
+        logger.info(
+            "Chunked %d tables from %s into %d TABLE chunks",
+            len(tables),
+            section.value,
+            len(chunks),
         )
         return chunks
 
