@@ -16,6 +16,7 @@ from src.clients.edgar import (
     FilingNotFoundError,
     TickerNotFoundError,
 )
+from src.models.chunk import ContentType
 from src.models.document import Document
 from src.repositories.document import DocumentRepository
 from src.schemas.chunking import ChunkData
@@ -130,10 +131,10 @@ class IngestionService:
         )
         await doc_repo.create(document)
 
-        # 6. Chunk all sections
+        # 6. Chunk all sections (text + tables)
         all_chunks: list[ChunkData] = []
         for section_type, section_content in parsed.sections.items():
-            chunks = self._chunker.chunk_section(
+            text_chunks = self._chunker.chunk_section(
                 text=section_content.text_content,
                 section=section_type,
                 section_title=section_content.title,
@@ -141,7 +142,17 @@ class IngestionService:
                 cik=filing.cik,
                 fiscal_year=fiscal_year,
             )
-            all_chunks.extend(chunks)
+            table_chunks = self._chunker.chunk_tables(
+                tables=section_content.tables,
+                section=section_type,
+                section_title=section_content.title,
+                company_name=filing.company_name,
+                cik=filing.cik,
+                fiscal_year=fiscal_year,
+                chunk_index_offset=len(text_chunks),
+            )
+            all_chunks.extend(text_chunks)
+            all_chunks.extend(table_chunks)
 
         if not all_chunks:
             raise IngestionError(
@@ -154,7 +165,15 @@ class IngestionService:
             chunk.metadata["chunk_index"] = idx
             chunk.metadata["total_chunks"] = len(all_chunks)
 
-        logger.info("Produced %d chunks across %d sections", len(all_chunks), len(parsed.sections))
+        text_count = sum(1 for c in all_chunks if c.content_type == ContentType.TEXT)
+        table_count = sum(1 for c in all_chunks if c.content_type == ContentType.TABLE)
+        logger.info(
+            "Produced %d chunks (%d text, %d table) across %d sections",
+            len(all_chunks),
+            text_count,
+            table_count,
+            len(parsed.sections),
+        )
 
         # 7. Embed and store
         await self._embedding_service.embed_and_store(all_chunks, document.id, session)
