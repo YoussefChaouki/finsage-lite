@@ -18,6 +18,7 @@ from src.models.document import Document
 from src.schemas.chunking import ChunkData
 from src.schemas.edgar import FilingInfo
 from src.schemas.parsing import FilingMetadata, ParsedFiling, SectionContent
+from src.schemas.table import StructuredTable
 from src.services.ingestion import (
     DuplicateDocumentError,
     IngestionError,
@@ -42,7 +43,20 @@ def _make_filing_info() -> FilingInfo:
 
 
 def _make_parsed_filing() -> ParsedFiling:
-    """Create a sample ParsedFiling for testing."""
+    """Create a sample ParsedFiling for testing.
+
+    ITEM_1 includes one StructuredTable to exercise the table chunking path.
+    """
+    revenue_table = StructuredTable(
+        title="Revenue Summary",
+        headers=["Segment", "2024", "2023"],
+        rows=[
+            {"Segment": "iPhone", "2024": "201,183", "2023": "200,583"},
+            {"Segment": "Mac", "2024": "29,984", "2023": "29,357"},
+        ],
+        row_count=2,
+        source_section="ITEM_1",
+    )
     return ParsedFiling(
         metadata=FilingMetadata(
             company_name="Apple Inc.",
@@ -57,6 +71,7 @@ def _make_parsed_filing() -> ParsedFiling:
                 title="Business",
                 html_content="<p>Apple designs...</p>",
                 text_content="Apple designs and manufactures consumer electronics.",
+                tables=[revenue_table],
             ),
             SectionType.ITEM_1A: SectionContent(
                 section_type=SectionType.ITEM_1A,
@@ -178,6 +193,7 @@ class TestIngestionService:
                 [chunks[0]],  # ITEM_1
                 [chunks[1]],  # ITEM_1A
             ]
+            mock_chunker.chunk_tables.return_value = []  # no table chunks
 
             result, chunk_count = await service.ingest("AAPL", 2024, mock_session)
 
@@ -192,6 +208,7 @@ class TestIngestionService:
             repo_instance.create.assert_called_once()
             mock_parser.parse_html.assert_called_once()
             assert mock_chunker.chunk_section.call_count == 2
+            assert mock_chunker.chunk_tables.call_count == 2
             mock_embedding_service.embed_and_store.assert_called_once()
             repo_instance.update_processed.assert_called_once()
             mock_session.commit.assert_called_once()
@@ -340,10 +357,90 @@ class TestIngestionService:
             MockEdgar.return_value.__aexit__ = AsyncMock(return_value=False)
 
             mock_parser.parse_html.return_value = parsed
-            mock_chunker.chunk_section.return_value = []  # No chunks
+            mock_chunker.chunk_section.return_value = []  # No text chunks
+            mock_chunker.chunk_tables.return_value = []  # No table chunks
 
             with pytest.raises(IngestionError, match="No chunks produced"):
                 await service.ingest("AAPL", 2024, mock_session)
+
+    @pytest.mark.asyncio(loop_scope="session")
+    async def test_ingest_table_chunks_included(
+        self,
+        service: IngestionService,
+        mock_session: AsyncMock,
+        mock_embedding_service: MagicMock,
+    ) -> None:
+        """TABLE chunks from parsed section tables are included in the ingestion result."""
+        filing = _make_filing_info()
+        parsed = _make_parsed_filing()  # ITEM_1 has one table
+
+        text_chunk = ChunkData(
+            section=SectionType.ITEM_1,
+            section_title="Business",
+            content_type=ContentType.TEXT,
+            content_raw="Apple designs and manufactures consumer electronics.",
+            content_context="[Apple Inc. | 10-K FY2024 | Business]\n\nApple designs...",
+            chunk_index=0,
+            metadata={"company": "Apple Inc.", "section": "ITEM_1"},
+        )
+        table_chunk = ChunkData(
+            section=SectionType.ITEM_1,
+            section_title="Business",
+            content_type=ContentType.TABLE,
+            content_raw="Financial table: Revenue Summary | Apple Inc. 10-K FY2024 | Business",
+            content_context="[Apple Inc. | 10-K FY2024 | Business]\n\nFinancial table: Revenue...",
+            chunk_index=1,
+            metadata={
+                "company": "Apple Inc.",
+                "section": "ITEM_1",
+                "table_title": "Revenue Summary",
+                "table_row_count": 2,
+            },
+        )
+
+        with (
+            patch("src.services.ingestion.DocumentRepository") as MockDocRepo,
+            patch("src.services.ingestion.EdgarClient") as MockEdgar,
+            patch.object(service, "_parser") as mock_parser,
+            patch.object(service, "_chunker") as mock_chunker,
+        ):
+            repo_instance = MockDocRepo.return_value
+            repo_instance.get_by_ticker_and_year = AsyncMock(return_value=None)
+            repo_instance.create = AsyncMock(side_effect=lambda doc: doc)
+            repo_instance.update_processed = AsyncMock()
+
+            edgar_instance = AsyncMock()
+            edgar_instance.resolve_cik = AsyncMock(return_value="0000320193")
+            edgar_instance.get_10k_filings = AsyncMock(return_value=[filing])
+            edgar_instance.download_filing = AsyncMock(return_value=Path("/tmp/test_filing.html"))
+            MockEdgar.return_value.__aenter__ = AsyncMock(return_value=edgar_instance)
+            MockEdgar.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            mock_parser.parse_html.return_value = parsed
+            mock_chunker.chunk_section.side_effect = [
+                [text_chunk],  # ITEM_1
+                [],  # ITEM_1A
+            ]
+            mock_chunker.chunk_tables.side_effect = [
+                [table_chunk],  # ITEM_1 table → 1 TABLE chunk
+                [],  # ITEM_1A has no tables
+            ]
+
+            _, chunk_count = await service.ingest("AAPL", 2024, mock_session)
+
+            # 1 text + 1 table = 2 total chunks
+            assert chunk_count == 2
+            assert mock_chunker.chunk_tables.call_count == 2
+
+            # Verify chunk_tables was called with offset=len(text_chunks) for ITEM_1
+            first_table_call = mock_chunker.chunk_tables.call_args_list[0]
+            assert first_table_call.kwargs["chunk_index_offset"] == 1  # len([text_chunk])
+
+            # Verify TABLE chunk was forwarded to embed_and_store
+            stored_chunks: list[ChunkData] = mock_embedding_service.embed_and_store.call_args[0][0]
+            table_chunks_stored = [c for c in stored_chunks if c.content_type == ContentType.TABLE]
+            assert len(table_chunks_stored) == 1
+            assert table_chunks_stored[0].metadata["table_title"] == "Revenue Summary"
 
 
 class TestDocumentRouter:
