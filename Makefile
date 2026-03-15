@@ -8,7 +8,7 @@
         lint format type-check check \
         docker-up docker-down docker-logs rebuild \
         db-shell migrate seed evaluate evaluate-report \
-        benchmark rebuild-bm25 clean
+        benchmark rebuild-bm25 inspect-dataset clean
 
 # ==============================================================================
 # Help
@@ -124,6 +124,9 @@ evaluate-report: ## Generate evaluation report
 
 benchmark: ## Run search latency benchmarks and write BENCHMARK.md
 	python scripts/benchmark_search.py --output BENCHMARK.md
+
+inspect-dataset: ## Inspect PatronusAI/financebench and recommend benchmark corpus
+	python scripts/inspect_financebench.py
 
 rebuild-bm25: ## Rebuild the in-memory BM25 index via the API
 	curl -s -X POST http://localhost:8000/api/v1/search/rebuild-index | python -m json.tool
