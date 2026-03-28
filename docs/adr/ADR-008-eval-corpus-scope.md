@@ -20,11 +20,27 @@ Critères de sélection retenus :
 - Privilégier les entreprises avec ≥ 10 questions dans le dataset
 - Retenir 3–4 entreprises pour avoir une diversité sectorielle minimale
 
-Résultats de `make inspect-dataset` (à compléter après première exécution) :
+Résultats de `make inspect-dataset` (exécuté le 2026-03-28) :
 
 ```
-# Résumé à coller ici après avoir lancé le script
-# Retenir : [COMPANY_A FY20XX, COMPANY_B FY20XX, ...]
+Total questions : 150
+Entreprises représentées : 20+
+
+Top companies (par nombre de questions) :
+  PepsiCo                11  (FY2022: 5, FY2023: 5, FY2021: 1)
+  Amcor                   9  (FY2023: 7, FY2022: 1, FY2020: 1)
+  Johnson & Johnson       9  (FY2022: 5, FY2023: 4)
+  3M                      8  (FY2022: 3, FY2023: 3, FY2018: 2)
+  AMD                     8
+  Best Buy                8
+  Boeing                  8
+
+Categories (équilibrées à 50 chacune) :
+  metrics-generated : 50
+  domain-relevant   : 50
+  novel-generated   : 50
+
+Retenir : [PepsiCo FY2023, Amcor FY2023, Johnson & Johnson FY2022, 3M FY2023]
 ```
 
 ## Décision
@@ -33,10 +49,14 @@ Retenir les entreprises et années fiscales suivantes pour le benchmark Sprint 4
 
 | Entreprise | Ticker | Fiscal Year | Questions couvertes |
 |-----------|--------|-------------|---------------------|
-| À compléter après `make inspect-dataset` | | | |
+| PepsiCo | PEP | FY2023 | 5 |
+| Amcor | AMCR | FY2023 | 7 |
+| Johnson & Johnson | JNJ | FY2022 | 5 |
+| 3M | MMM | FY2023 | 3 |
+| **Total** | | | **20 / 150 (13.3%)** |
 
-> **Note** : Mettre à jour ce tableau après avoir exécuté `make inspect-dataset` et
-> copier le résumé "Retenir : [...]" produit par le script.
+Critère de sélection de l'année fiscale : année la mieux représentée par entreprise
+(tie-break : année la plus récente).
 
 ## Justification
 
@@ -56,11 +76,15 @@ Retenir les entreprises et années fiscales suivantes pour le benchmark Sprint 4
 
 ## Conséquences
 
-- **Couverture estimée** : ~60–80% des questions de financebench couvertes par le corpus retenu
-  (à confirmer après inspection).
-- **Filings à ingérer** : 3–4 documents (vs ~15 pour couverture complète).
-- **Métriques cibles Sprint 4** : Exact-match accuracy ≥ 40%, ROUGE-L ≥ 0.35 sur le
-  sous-ensemble retenu.
-- **Limitation** : Les questions portant sur des entreprises hors corpus seront exclues
-  de l'évaluation automatique ; elles pourront servir de test de robustesse manuel.
-- **Action** : Mettre à jour ce document après `make inspect-dataset` avec les vrais chiffres.
+- **Couverture effective** : 20 / 150 questions (13.3%) — intentionnellement limité à 4 filings.
+  L'estimation initiale de 60–80% supposait une sélection multi-années ; la contrainte
+  « 1 filing par entreprise » ramène à 13.3%, statistiquement suffisant pour comparer
+  les configurations entre elles.
+- **Filings à ingérer** : 4 documents (PEP FY2023, AMCR FY2023, JNJ FY2022, MMM FY2023).
+- **Métriques cibles Sprint 4** : Recall@5 ≥ 85% sur la meilleure config (objectif principal).
+  F1 token-level ≥ 0.40 sur les questions avec génération activée.
+- **Catégories** : les 3 catégories de financebench (metrics-generated, domain-relevant,
+  novel-generated) sont équilibrées à 50 chacune ; le sous-corpus de 20 questions reflète
+  cette distribution.
+- **Limitation** : Les 130 questions hors corpus sont exclues de l'évaluation automatique.
+  Elles peuvent servir à tester la robustesse sur des entreprises inconnues (zéro-shot).

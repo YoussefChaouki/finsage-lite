@@ -210,8 +210,9 @@ __marimo__/
 data/filings/*.html
 data/filings/*.htm
 
-# Evaluation results (auto-generated, not tracked)
+# Evaluation results and reports (auto-generated, not tracked)
 evaluation/results/
+evaluation/reports/*.md
 
 .DS_Store
 
