@@ -116,8 +116,8 @@ migrate: ## Apply all pending Alembic migrations
 seed: ## Ingest demo data (AAPL, MSFT, GOOGL)
 	python scripts/seed_demo_data.py
 
-evaluate: ## Run RAG evaluation harness
-	python evaluation/harness.py
+evaluate: ## Run RAG evaluation harness (complete run: ~20-40 min depending on dataset size)
+	python -m evaluation.harness
 
 evaluate-report: ## Generate evaluation report
 	python evaluation/report_generator.py
