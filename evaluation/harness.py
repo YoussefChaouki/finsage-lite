@@ -4,6 +4,13 @@ Runs each :class:`~evaluation.schemas.EvalQuestion` from the FinanceBench
 corpus against the four pre-defined :data:`EVAL_CONFIGS`, aggregates
 retrieval quality metrics, and serializes results to JSON.
 
+When a ``generate_fn`` is provided (e.g. via
+:meth:`EvalHarness.make_ollama_generate_fn`), the harness also generates an
+answer for each question and computes generation quality metrics
+(:func:`~evaluation.metrics_generation.f1_token_level` by default; RAGAS when
+``RAGAS_ENABLED=true``).  If Ollama is offline, generation is silently skipped
+and all generation fields remain ``None``.
+
 Usage (CLI)::
 
     python -m evaluation.harness
@@ -22,6 +29,7 @@ from pathlib import Path
 
 import httpx
 
+from evaluation.metrics_generation import GenerationMetrics, get_strategy
 from evaluation.metrics_retrieval import (
     find_gold_rank,
     hit_rate_at_k,
@@ -33,11 +41,31 @@ from evaluation.schemas import EvalConfig, EvalQuestion
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Type alias for the injected search callable
+# Type aliases for the injected callables
 # ---------------------------------------------------------------------------
 
 # (query: str, config: EvalConfig) -> (chunk_contents_best_first, latency_ms)
 SearchFn = Callable[[str, EvalConfig], tuple[list[str], float]]
+
+# (question: str, contexts: list[str]) -> generated_answer
+GenerateFn = Callable[[str, list[str]], str]
+
+# ---------------------------------------------------------------------------
+# Financial generation prompt
+# ---------------------------------------------------------------------------
+
+_GENERATION_PROMPT_TEMPLATE = """\
+You are a financial analyst reviewing SEC 10-K filings.
+
+Context passages:
+{context}
+
+Based solely on the context above, answer the following question clearly and \
+concisely using specific financial data where available.
+
+Question: {question}
+
+Answer:"""
 
 # ---------------------------------------------------------------------------
 # Pre-defined evaluation configurations
@@ -69,6 +97,10 @@ class QuestionResult:
         gold_rank: 1-based rank of the first chunk that contains the gold
             evidence, or ``None`` if not found.
         latency_ms: End-to-end search latency for this question (milliseconds).
+        generated_answer: LLM-generated answer, or ``None`` if generation was
+            skipped (Ollama offline or no ``generate_fn`` provided).
+        f1_score: Token-level F1 score for this question, or ``None`` if
+            generation was skipped.
     """
 
     question_id: int
@@ -78,6 +110,8 @@ class QuestionResult:
     gold_found: bool
     gold_rank: int | None
     latency_ms: float
+    generated_answer: str | None = None
+    f1_score: float | None = None
 
 
 @dataclass
@@ -98,6 +132,14 @@ class EvalResults:
         latency_p99_ms: 99th-percentile search latency in milliseconds.
         n_questions: Total number of questions evaluated.
         per_question: Per-question result details.
+        f1_score: Mean F1 token-level score across all questions for which
+            generation was performed, or ``None`` if generation was skipped.
+        ragas_answer_correctness: Mean RAGAS Answer Correctness score, or
+            ``None`` if RAGAS was not run.
+        ragas_faithfulness: Mean RAGAS Faithfulness score, or ``None`` if
+            RAGAS was not run.
+        ragas_context_relevancy: Mean RAGAS Context Relevancy score, or
+            ``None`` if RAGAS was not run.
     """
 
     config: EvalConfig
@@ -113,13 +155,18 @@ class EvalResults:
     latency_p99_ms: float
     n_questions: int
     per_question: list[QuestionResult]
+    f1_score: float | None = None
+    ragas_answer_correctness: float | None = None
+    ragas_faithfulness: float | None = None
+    ragas_context_relevancy: float | None = None
 
     def to_dict(self) -> dict:
         """Serialize results to a JSON-compatible dictionary.
 
         Returns:
             Dict with top-level keys ``config``, ``metrics``,
-            ``latency_stats``, and ``per_question_results``.
+            ``generation_metrics``, ``latency_stats``, and
+            ``per_question_results``.
         """
         return {
             "config": self.config.model_dump(),
@@ -132,6 +179,12 @@ class EvalResults:
                 "hit_rate_at_3": self.hit_rate_at_3,
                 "hit_rate_at_5": self.hit_rate_at_5,
                 "n_questions": self.n_questions,
+            },
+            "generation_metrics": {
+                "f1_score": self.f1_score,
+                "ragas_answer_correctness": self.ragas_answer_correctness,
+                "ragas_faithfulness": self.ragas_faithfulness,
+                "ragas_context_relevancy": self.ragas_context_relevancy,
             },
             "latency_stats": {
                 "p50_ms": self.latency_p50_ms,
@@ -148,18 +201,65 @@ class EvalResults:
 
 
 class EvalHarness:
-    """Orchestrates retrieval evaluation across multiple configurations.
+    """Orchestrates retrieval (and optionally generation) evaluation.
 
-    The harness delegates all search calls to an injected :data:`SearchFn`,
-    making it fully testable without a running API or database.
+    The harness delegates all search calls to an injected :data:`SearchFn` and,
+    when a :data:`GenerateFn` is supplied, also runs LLM generation and computes
+    generation quality metrics.  Both callables are injected for testability.
 
     Args:
         search_fn: Callable ``(query, config) → (chunk_contents, latency_ms)``.
             ``chunk_contents`` must be ordered best-first (rank 1 = index 0).
+        generate_fn: Optional callable ``(question, contexts) → answer``.
+            When ``None``, generation and all generation metrics are skipped.
     """
 
-    def __init__(self, search_fn: SearchFn) -> None:
+    def __init__(
+        self,
+        search_fn: SearchFn,
+        generate_fn: GenerateFn | None = None,
+    ) -> None:
         self._search_fn = search_fn
+        self._generate_fn = generate_fn
+
+    @staticmethod
+    def make_ollama_generate_fn(
+        base_url: str = "http://localhost:11434",
+        model: str = "mistral",
+        timeout: float = 30.0,
+    ) -> GenerateFn | None:
+        """Create a generation callable backed by a local Ollama instance.
+
+        Probes Ollama availability before returning.  Returns ``None`` if
+        Ollama is unreachable so callers can enable graceful degradation.
+
+        Args:
+            base_url: Ollama base URL (no trailing slash).
+            model: Model name served by Ollama (default: ``mistral``).
+            timeout: Per-request timeout in seconds.
+
+        Returns:
+            Synchronous :data:`GenerateFn`, or ``None`` if Ollama is offline.
+        """
+        try:
+            probe = httpx.get(f"{base_url}/api/tags", timeout=3.0)
+            probe.raise_for_status()
+        except (httpx.TimeoutException, httpx.ConnectError, httpx.HTTPStatusError):
+            logger.warning("Ollama not reachable at %s — generation disabled", base_url)
+            return None
+
+        def _fn(question: str, contexts: list[str]) -> str:
+            context_text = "\n\n".join(contexts)
+            prompt = _GENERATION_PROMPT_TEMPLATE.format(context=context_text, question=question)
+            resp = httpx.post(
+                f"{base_url}/api/generate",
+                json={"model": model, "prompt": prompt, "stream": False},
+                timeout=timeout,
+            )
+            resp.raise_for_status()
+            return str(resp.json().get("response", ""))
+
+        return _fn
 
     @staticmethod
     def make_api_search_fn(
@@ -211,21 +311,29 @@ class EvalHarness:
 
         1. Calls ``search_fn`` to obtain ranked chunk contents and latency.
         2. Locates the gold evidence (``evidence_text`` or ``expected_answer``)
-           within the retrieved chunks using :func:`~evaluation.metrics_retrieval.find_gold_rank`.
+           within the retrieved chunks using
+           :func:`~evaluation.metrics_retrieval.find_gold_rank`.
         3. Records the 1-based gold rank (``None`` if not found) and latency.
+        4. If a ``generate_fn`` was provided, generates an answer from the
+           retrieved context and computes generation metrics (F1, and RAGAS
+           when ``RAGAS_ENABLED=true``).
 
         Questions for which gold evidence is not found in any chunk are logged
-        at ``WARNING`` level to aid debugging.
+        at ``DEBUG`` level.
 
         Args:
             config: Retrieval configuration to evaluate.
             questions: Questions to run.
 
         Returns:
-            :class:`EvalResults` with aggregated metrics and per-question details.
+            :class:`EvalResults` with aggregated retrieval and generation
+            metrics, plus per-question details.
         """
         per_question: list[QuestionResult] = []
         latencies: list[float] = []
+        gen_metrics_list: list[GenerationMetrics] = []
+
+        generation_strategy = get_strategy() if self._generate_fn is not None else None
 
         for q_id, question in enumerate(questions):
             gold = question.evidence_text or question.expected_answer
@@ -233,6 +341,30 @@ class EvalHarness:
             latencies.append(latency_ms)
 
             rank = find_gold_rank(contents, gold)
+
+            # ---- optional generation -----------------------------------------
+            generated_answer: str | None = None
+            q_f1: float | None = None
+
+            if self._generate_fn is not None and generation_strategy is not None:
+                try:
+                    generated_answer = self._generate_fn(question.question, contents)
+                    gen_m = generation_strategy.evaluate(
+                        question=question.question,
+                        expected=question.expected_answer,
+                        generated=generated_answer,
+                        contexts=contents,
+                    )
+                    q_f1 = gen_m.f1
+                    gen_metrics_list.append(gen_m)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "[%s] Generation failed for q%d: %s",
+                        config.name,
+                        q_id,
+                        exc,
+                    )
+
             per_question.append(
                 QuestionResult(
                     question_id=q_id,
@@ -242,6 +374,8 @@ class EvalHarness:
                     gold_found=rank is not None,
                     gold_rank=rank,
                     latency_ms=latency_ms,
+                    generated_answer=generated_answer,
+                    f1_score=q_f1,
                 )
             )
 
@@ -253,7 +387,7 @@ class EvalHarness:
                     question.question[:80],
                 )
 
-        # ---- aggregate --------------------------------------------------------
+        # ---- aggregate retrieval metrics -------------------------------------
         ranks = [r.gold_rank for r in per_question]
         hits_1 = [r.gold_rank is not None and r.gold_rank <= 1 for r in per_question]
         hits_3 = [r.gold_rank is not None and r.gold_rank <= 3 for r in per_question]
@@ -273,6 +407,40 @@ class EvalHarness:
                 len(per_question),
             )
 
+        # ---- aggregate generation metrics ------------------------------------
+        avg_f1: float | None = None
+        avg_ragas_ac: float | None = None
+        avg_ragas_faith: float | None = None
+        avg_ragas_cr: float | None = None
+
+        if gen_metrics_list:
+            avg_f1 = sum(m.f1 for m in gen_metrics_list) / len(gen_metrics_list)
+
+            ragas_ac = [
+                m.ragas_answer_correctness
+                for m in gen_metrics_list
+                if m.ragas_answer_correctness is not None
+            ]
+            ragas_faith = [
+                m.ragas_faithfulness for m in gen_metrics_list if m.ragas_faithfulness is not None
+            ]
+            ragas_cr = [
+                m.ragas_context_relevancy
+                for m in gen_metrics_list
+                if m.ragas_context_relevancy is not None
+            ]
+
+            avg_ragas_ac = sum(ragas_ac) / len(ragas_ac) if ragas_ac else None
+            avg_ragas_faith = sum(ragas_faith) / len(ragas_faith) if ragas_faith else None
+            avg_ragas_cr = sum(ragas_cr) / len(ragas_cr) if ragas_cr else None
+
+            logger.info(
+                "[%s] generation: avg_f1=%.3f  ragas_ac=%s",
+                config.name,
+                avg_f1,
+                f"{avg_ragas_ac:.3f}" if avg_ragas_ac is not None else "n/a",
+            )
+
         return EvalResults(
             config=config,
             recall_at_1=r1,
@@ -287,6 +455,10 @@ class EvalHarness:
             latency_p99_ms=stats["p99"],
             n_questions=len(questions),
             per_question=per_question,
+            f1_score=avg_f1,
+            ragas_answer_correctness=avg_ragas_ac,
+            ragas_faithfulness=avg_ragas_faith,
+            ragas_context_relevancy=avg_ragas_cr,
         )
 
     def run_all(self, questions: list[EvalQuestion]) -> list[EvalResults]:
@@ -366,7 +538,8 @@ def _main() -> None:
     logger.info("Loaded %d questions", len(questions))
 
     search_fn = EvalHarness.make_api_search_fn()
-    harness = EvalHarness(search_fn=search_fn)
+    generate_fn = EvalHarness.make_ollama_generate_fn()
+    harness = EvalHarness(search_fn=search_fn, generate_fn=generate_fn)
     output_dir = Path("evaluation/results")
 
     all_results = harness.run_all(questions)

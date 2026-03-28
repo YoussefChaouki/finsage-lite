@@ -44,6 +44,10 @@ dev = [
     "pandas-stubs",
     "rich>=13.7.0",
 ]
+eval = [
+    "ragas>=0.1",
+    "datasets>=2.0",
+]
 
 [build-system]
 requires = ["hatchling"]
