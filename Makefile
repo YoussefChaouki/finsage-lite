@@ -8,7 +8,7 @@
         lint format type-check check \
         docker-up docker-down docker-logs rebuild \
         db-shell migrate seed evaluate evaluate-with-ragas evaluate-report \
-        benchmark rebuild-bm25 inspect-dataset clean
+        ablation benchmark rebuild-bm25 inspect-dataset clean
 
 # ==============================================================================
 # Help
@@ -122,8 +122,11 @@ evaluate: ## Run RAG evaluation harness (complete run: ~20-40 min depending on d
 evaluate-with-ragas: ## Run evaluation harness with RAGAS generation metrics enabled
 	RAGAS_ENABLED=true python -m evaluation.harness
 
-evaluate-report: ## Generate evaluation report
-	python evaluation/report_generator.py
+ablation: ## Run RRF k + HyDE ablation studies (writes results to evaluation/results/)
+	python -m evaluation.ablation
+
+evaluate-report: ## Generate Markdown report from evaluation/results/ JSON files
+	python -m evaluation.report_generator
 
 benchmark: ## Run search latency benchmarks and write BENCHMARK.md
 	python scripts/benchmark_search.py --output BENCHMARK.md
