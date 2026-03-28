@@ -210,6 +210,9 @@ __marimo__/
 data/filings/*.html
 data/filings/*.htm
 
+# Evaluation results (auto-generated, not tracked)
+evaluation/results/
+
 .DS_Store
 
 # Local scratch notes
