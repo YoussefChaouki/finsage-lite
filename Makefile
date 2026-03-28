@@ -7,7 +7,7 @@
 .PHONY: help setup install run test test-unit test-int \
         lint format type-check check \
         docker-up docker-down docker-logs rebuild \
-        db-shell migrate seed evaluate evaluate-report \
+        db-shell migrate seed evaluate evaluate-with-ragas evaluate-report \
         benchmark rebuild-bm25 inspect-dataset clean
 
 # ==============================================================================
@@ -118,6 +118,9 @@ seed: ## Ingest demo data (AAPL, MSFT, GOOGL)
 
 evaluate: ## Run RAG evaluation harness (complete run: ~20-40 min depending on dataset size)
 	python -m evaluation.harness
+
+evaluate-with-ragas: ## Run evaluation harness with RAGAS generation metrics enabled
+	RAGAS_ENABLED=true python -m evaluation.harness
 
 evaluate-report: ## Generate evaluation report
 	python evaluation/report_generator.py
