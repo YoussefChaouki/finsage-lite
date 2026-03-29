@@ -10,9 +10,10 @@ FROM node:20-alpine AS development
 
 WORKDIR /app
 
-# Install deps first (cached layer)
+# npm install (not ci) so the stage works even before package-lock.json is
+# committed to git. A lock file is generated here and inherited by builder.
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 # Copy source (overridden by volume mount in docker-compose dev)
 COPY . .
@@ -23,6 +24,7 @@ EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 # ── Stage 2: builder ────────────────────────────────────────
+# Inherits installed node_modules from development — just run the build.
 FROM development AS builder
 
 RUN npm run build
