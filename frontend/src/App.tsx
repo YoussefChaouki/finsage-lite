@@ -1,27 +1,49 @@
-/**
- * FinSage-Lite — Root application component.
- *
- * Minimal scaffold for Sprint 5.0 infrastructure setup.
- * Dark theme is applied globally via the "dark" class on <html> in index.css.
- */
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
+import { MainLayout } from "@/components/layout/MainLayout";
+import SearchPage from "@/pages/SearchPage";
+import BrowsePage from "@/pages/BrowsePage";
+import DocumentsPage from "@/pages/DocumentsPage";
+import NotFoundPage from "@/pages/NotFoundPage";
 
-function App() {
+const fadeVariants = {
+  initial: { opacity: 0, y: 6 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -6 },
+};
+
+/** Animated page wrapper — fades in/out on route change. */
+function AnimatedRoutes() {
+  const location = useLocation();
+
   return (
-    <div className="min-h-screen bg-finsage-bg text-finsage-text flex items-center justify-center">
-      <div className="text-center space-y-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-100">
-          FinSage-Lite
-        </h1>
-        <p className="text-sm text-slate-400">
-          SEC 10-K RAG — frontend infrastructure ready
-        </p>
-        <div className="flex items-center justify-center gap-2 text-xs text-emerald-500">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          Sprint 5.0 setup complete
-        </div>
-      </div>
-    </div>
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={location.pathname}
+        variants={fadeVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        transition={{ duration: 0.15, ease: "easeInOut" }}
+        className="flex h-full flex-col"
+      >
+        <Routes location={location}>
+          <Route path="/" element={<SearchPage />} />
+          <Route path="/browse" element={<BrowsePage />} />
+          <Route path="/documents" element={<DocumentsPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <BrowserRouter>
+      <MainLayout>
+        <AnimatedRoutes />
+      </MainLayout>
+    </BrowserRouter>
+  );
+}
