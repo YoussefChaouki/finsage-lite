@@ -1,7 +1,7 @@
 # ==============================================================================
 # FinSage-Lite - Docker Compose Stack
 # Local development environment with hot-reload, PostgreSQL (pgvector)
-# Usage: make up / make down / make logs
+# Usage: make docker-up / make docker-down / make docker-logs
 # ==============================================================================
 
 services:
@@ -26,16 +26,19 @@ services:
     command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
     restart: unless-stopped
 
-  # FinSage-Lite Frontend (Streamlit UI)
-  ui:
+  # FinSage-Lite Frontend (React + Vite)
+  frontend:
     build:
-      context: ./streamlit_app
+      context: ./frontend
       dockerfile: Dockerfile
-    container_name: finsage-ui
+      target: development
+    container_name: finsage-frontend
     ports:
-      - "8501:8501"
+      - "5173:5173"
     environment:
-      - API_URL=http://api:8000
+      - VITE_API_URL=http://api:8000
+    volumes:
+      - ./frontend/src:/app/src
     depends_on:
       - api
     restart: unless-stopped

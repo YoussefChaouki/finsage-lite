@@ -8,7 +8,8 @@
         lint format type-check check \
         docker-up docker-down docker-logs rebuild \
         db-shell migrate seed evaluate evaluate-with-ragas evaluate-report \
-        ablation benchmark rebuild-bm25 inspect-dataset clean
+        ablation benchmark rebuild-bm25 inspect-dataset clean \
+        frontend-dev frontend-build frontend-install
 
 # ==============================================================================
 # Help
@@ -81,13 +82,13 @@ check: ## Quick pre-commit validation (format + lint + unit tests)
 # Docker Operations
 # ==============================================================================
 
-docker-up: ## Start full Docker stack (API + UI + DB)
+docker-up: ## Start full Docker stack (API + Frontend + DB)
 	docker compose up -d
 	@echo ""
 	@echo "✓ FinSage-Lite is running:"
-	@echo "   UI:   http://localhost:8501"
-	@echo "   API:  http://localhost:8000"
-	@echo "   Docs: http://localhost:8000/docs"
+	@echo "   Frontend: http://localhost:5173"
+	@echo "   API:      http://localhost:8000"
+	@echo "   Docs:     http://localhost:8000/docs"
 
 docker-down: ## Stop all Docker services
 	docker compose down
@@ -136,6 +137,19 @@ inspect-dataset: ## Inspect PatronusAI/financebench and recommend benchmark corp
 
 rebuild-bm25: ## Rebuild the in-memory BM25 index via the API
 	curl -s -X POST http://localhost:8000/api/v1/search/rebuild-index | python -m json.tool
+
+# ==============================================================================
+# Frontend (React + Vite)
+# ==============================================================================
+
+frontend-install: ## Install frontend npm dependencies
+	cd frontend && npm install
+
+frontend-dev: ## Start Vite dev server locally (outside Docker) on :5173
+	cd frontend && npm run dev
+
+frontend-build: ## Build production static assets into frontend/dist/
+	cd frontend && npm run build
 
 # ==============================================================================
 # Cleanup
