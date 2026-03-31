@@ -35,7 +35,7 @@ def test_search_dense_mode_returns_200(api_client: httpx.Client) -> None:
     assert data["total"] == len(data["results"])
     assert data["hyde_used"] is False
     assert data["latency_ms"] > 0
-    assert data["answer"] is None
+    assert data["answer"] is None or isinstance(data["answer"], str)
 
 
 @pytest.mark.integration
@@ -52,7 +52,7 @@ def test_search_sparse_mode_returns_200(api_client: httpx.Client) -> None:
     assert isinstance(data["results"], list)
     assert data["total"] == len(data["results"])
     assert data["latency_ms"] > 0
-    assert data["answer"] is None
+    assert data["answer"] is None or isinstance(data["answer"], str)
 
 
 @pytest.mark.integration
@@ -69,7 +69,7 @@ def test_search_hybrid_mode_returns_200(api_client: httpx.Client) -> None:
     assert isinstance(data["results"], list)
     assert data["total"] == len(data["results"])
     assert data["latency_ms"] > 0
-    assert data["answer"] is None
+    assert data["answer"] is None or isinstance(data["answer"], str)
 
 
 @pytest.mark.integration

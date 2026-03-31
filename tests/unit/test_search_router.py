@@ -25,6 +25,7 @@ from src.core.database import get_db
 from src.models.chunk import SectionType
 from src.schemas.search import SearchResponse, SearchResult
 from src.services.bm25_service import BM25Service
+from src.services.generation import GenerationService
 from src.services.hyde_service import HyDEService
 from src.services.retrieval_service import RetrievalService
 
@@ -104,15 +105,25 @@ def mock_hyde_service() -> MagicMock:
 
 
 @pytest.fixture
+def mock_generation_service() -> MagicMock:
+    """GenerationService mock that returns None (no LLM in unit tests)."""
+    mock = MagicMock(spec=GenerationService)
+    mock.generate = AsyncMock(return_value=None)
+    return mock
+
+
+@pytest.fixture
 def client(
     mock_retrieval_service: MagicMock,
     mock_bm25_service: MagicMock,
     mock_hyde_service: MagicMock,
+    mock_generation_service: MagicMock,
 ) -> TestClient:
     """TestClient wrapping a minimal FastAPI app with all search deps mocked.
 
-    - app.state provides BM25Service and HyDEService singletons.
-    - get_retrieval_service is overridden so no DB or model loading occurs.
+    - app.state provides BM25Service, HyDEService, and GenerationService singletons.
+    - get_retrieval_service and get_generation_service are overridden so no DB,
+      model loading, or Ollama calls occur.
     - get_db is overridden to avoid requiring a real Postgres connection.
     """
     test_app = FastAPI()
@@ -121,15 +132,22 @@ def client(
     # State-based deps read directly from app.state
     test_app.state.bm25_service = mock_bm25_service
     test_app.state.hyde_service = mock_hyde_service
+    test_app.state.generation_service = mock_generation_service
 
     async def _override_retrieval_service() -> RetrievalService:
         return mock_retrieval_service
+
+    async def _override_generation_service() -> GenerationService:
+        return mock_generation_service
 
     async def _override_get_db() -> AsyncGenerator[Any, None]:
         yield MagicMock()
 
     test_app.dependency_overrides[search_module.get_retrieval_service] = (
         _override_retrieval_service
+    )
+    test_app.dependency_overrides[search_module.get_generation_service] = (
+        _override_generation_service
     )
     test_app.dependency_overrides[get_db] = _override_get_db
 

@@ -68,5 +68,5 @@ def api_client(wait_for_api: None) -> Generator[httpx.Client, None, None]:
     Yields:
         httpx.Client: Session-scoped client, automatically closed after tests.
     """
-    with httpx.Client(base_url=BASE_URL, timeout=10.0) as client:
+    with httpx.Client(base_url=BASE_URL, timeout=120.0) as client:
         yield client
