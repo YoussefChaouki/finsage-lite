@@ -19,11 +19,13 @@ import pytest
 
 BASE_SEARCH = "/api/v1/search"
 
-# Latency ceilings in seconds (generous — smoke test, not strict perf gate)
+# Latency ceilings in seconds (includes LLM generation via Ollama — Sprint 3)
+# Pure retrieval targets (without generation): dense ~0.5s, sparse ~0.3s, hybrid ~0.8s
+# Generation adds 5-15s depending on model and hardware.
 LATENCY_LIMITS: dict[str, float] = {
-    "dense": 3.0,
-    "sparse": 2.0,
-    "hybrid": 5.0,
+    "dense": 20.0,
+    "sparse": 15.0,
+    "hybrid": 20.0,
 }
 
 SMOKE_QUERY = "What is Apple's total revenue?"
