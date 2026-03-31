@@ -17,6 +17,7 @@ from src.core.database import AsyncSessionLocal, init_db
 from src.core.logging import setup_logging
 from src.services.bm25_service import BM25Service
 from src.services.embedding import EmbeddingService
+from src.services.generation import GenerationService
 from src.services.hyde_service import HyDEService
 
 logger = logging.getLogger(__name__)
@@ -51,10 +52,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await bm25_service.build_index(db)
     app.state.bm25_service = bm25_service
 
+    generation_service = GenerationService()
+    app.state.generation_service = generation_service
+
     yield
 
-    # Shutdown — release httpx connection pool
+    # Shutdown — release httpx connection pools
     await hyde_service.aclose()
+    await generation_service.aclose()
 
 
 app = FastAPI(

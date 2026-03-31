@@ -24,6 +24,7 @@ from src.repositories.chunk import ChunkRepository
 from src.schemas.search import SearchHealthResponse, SearchRequest, SearchResponse
 from src.services.bm25_service import BM25Service
 from src.services.embedding import EmbeddingService
+from src.services.generation import GenerationService
 from src.services.hyde_service import HyDEService
 from src.services.retrieval_service import RetrievalService
 from src.services.search import DenseSearchService
@@ -74,6 +75,18 @@ def get_hyde_service(request: Request) -> HyDEService:
     return request.app.state.hyde_service  # type: ignore[no-any-return]
 
 
+def get_generation_service(request: Request) -> GenerationService:
+    """Return the singleton GenerationService from application state.
+
+    Args:
+        request: Current FastAPI request (injected automatically).
+
+    Returns:
+        The GenerationService instance initialized at startup.
+    """
+    return request.app.state.generation_service  # type: ignore[no-any-return]
+
+
 def get_retrieval_service(
     db: AsyncSession = Depends(get_db),
     bm25_service: BM25Service = Depends(get_bm25_service),
@@ -116,24 +129,26 @@ def get_retrieval_service(
 async def search(
     body: SearchRequest,
     retrieval_service: RetrievalService = Depends(get_retrieval_service),
+    generation_service: GenerationService = Depends(get_generation_service),
 ) -> SearchResponse:
-    """Execute search across SEC 10-K chunk embeddings.
+    """Execute search across SEC 10-K chunk embeddings, then generate an answer.
 
     Dispatches to dense, sparse, or hybrid retrieval based on
     ``body.search_mode``. When ``body.use_hyde=True`` and the query is
     analytical, HyDE expansion replaces the raw query embedding for dense
     retrieval (BM25 always uses the original query text).
 
-    Latency for each sub-step (BM25, dense, RRF, HyDE) is logged at DEBUG
-    level by the underlying services; overall request latency is reported
-    in the response body.
+    After retrieval, the top chunks are passed to GenerationService which
+    calls Ollama to produce a cited answer. If Ollama is unavailable,
+    ``answer`` is null and retrieval results are still returned.
 
     Args:
         body: Validated search request.
         retrieval_service: Wired retrieval orchestrator (injected).
+        generation_service: LLM answer generator (injected).
 
     Returns:
-        SearchResponse with ranked results, diagnostic metadata, and latency.
+        SearchResponse with ranked results, optional cited answer, and latency.
     """
     logger.info(
         "search request — mode=%s top_k=%d use_hyde=%s query=%r",
@@ -143,13 +158,17 @@ async def search(
         body.query[:80],
     )
     response = await retrieval_service.search(body)
+
+    answer = await generation_service.generate(body.query, response.results)
+
     logger.info(
-        "search complete — %d results in %.1fms (hyde_used=%s)",
+        "search complete — %d results in %.1fms (hyde_used=%s, answer=%s)",
         response.total,
         response.latency_ms,
         response.hyde_used,
+        "yes" if answer else "no",
     )
-    return response
+    return response.model_copy(update={"answer": answer})
 
 
 @router.get("/health", response_model=SearchHealthResponse)
