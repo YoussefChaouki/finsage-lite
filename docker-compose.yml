@@ -36,7 +36,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://api:8000
+      - VITE_API_TARGET=http://api:8000
     volumes:
       - ./frontend/src:/app/src
     depends_on:
