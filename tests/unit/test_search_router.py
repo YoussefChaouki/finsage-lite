@@ -279,10 +279,10 @@ def test_search_invalid_mode_returns_422(client: TestClient) -> None:
 
 
 def test_search_top_k_too_large_returns_422(client: TestClient) -> None:
-    """top_k > 20 must be rejected (Field constraint)."""
+    """top_k > 100 must be rejected (Field constraint, limit raised to 100 for browse)."""
     response = client.post(
         "/api/v1/search",
-        json={"query": "revenue", "top_k": 99},
+        json={"query": "revenue", "top_k": 101},
     )
     assert response.status_code == 422
 

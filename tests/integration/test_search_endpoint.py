@@ -138,8 +138,8 @@ def test_search_invalid_mode_returns_422(api_client: httpx.Client) -> None:
 
 @pytest.mark.integration
 def test_search_top_k_out_of_range_returns_422(api_client: httpx.Client) -> None:
-    """top_k=0 and top_k=21 must both be rejected with 422."""
-    for bad_k in (0, 21):
+    """top_k=0 and top_k=101 must both be rejected with 422 (limit raised to 100 for browse)."""
+    for bad_k in (0, 101):
         response = api_client.post(BASE_SEARCH, json={"query": "revenue", "top_k": bad_k})
         assert response.status_code == 422, f"Expected 422 for top_k={bad_k}"
 

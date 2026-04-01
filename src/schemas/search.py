@@ -118,7 +118,7 @@ class SearchRequest(BaseModel):
     """
 
     query: str
-    top_k: int = Field(default=5, ge=1, le=20)
+    top_k: int = Field(default=5, ge=1, le=100)
     search_mode: Literal["dense", "sparse", "hybrid"] = "hybrid"
     use_hyde: bool = False
     filters: SearchFilters = Field(default_factory=SearchFilters)
