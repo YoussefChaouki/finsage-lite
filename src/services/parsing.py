@@ -206,10 +206,18 @@ class FilingParser:
         return metadata
 
     def _find_section_headings(self, soup: BeautifulSoup) -> list[_HeadingInfo]:
-        """Find section headings via bold spans in the DOM.
+        """Find section headings using two complementary DOM strategies.
 
-        Identifies <span> elements with font-weight:700 whose text matches
-        the Item heading pattern. Excludes TOC entries (inside <td> elements).
+        Strategy 1 — bold spans (AAPL, MSFT, TSLA):
+            <span> elements with ``font-weight:700`` or ``font-weight:bold``
+            whose text matches the Item heading pattern.
+
+        Strategy 2 — direct-text divs/paragraphs (GOOGL, AMZN):
+            <div> or <p> elements whose visible text *is* the item heading
+            (≤ 150 chars, not inside a table or anchor). Applied only when
+            strategy 1 returns fewer than 3 headings.
+
+        TOC entries are excluded by their table/anchor parent elements.
 
         Args:
             soup: Parsed HTML document.
@@ -225,41 +233,84 @@ class FilingParser:
         body_children = [c for c in body.children if isinstance(c, Tag)]
         child_positions = {id(c): i for i, c in enumerate(body_children)}
 
+        seen_keys: set[tuple[str, int]] = set()
         headings: list[_HeadingInfo] = []
-        for span in soup.find_all("span", style=re.compile(r"font-weight:\s*700")):
+
+        # ── Strategy 1: bold <span> elements ──────────────────────────────
+        # Covers font-weight:700 (AAPL, AMZN inline) and font-weight:bold (MSFT, TSLA)
+        _fw_re = re.compile(r"font-weight:\s*(?:700|bold)")
+        for span in soup.find_all("span", style=_fw_re):
             text = span.get_text(strip=True)
             match = _ITEM_HEADING_RE.match(text)
             if not match:
+                # Some filers split item number and title across span/parent
+                # (e.g. TSLA: span="ITEM 1.", parent p="ITEM 1.BUSINESS")
+                parent_tag = span.parent
+                if isinstance(parent_tag, Tag):
+                    parent_text = parent_tag.get_text(strip=True)
+                    if len(parent_text) <= 150:
+                        match = _ITEM_HEADING_RE.match(parent_text)
+            if not match:
                 continue
-
-            # Skip if inside a table (TOC entry)
             if span.find_parent("table") is not None:
                 continue
-
             parent_div = span.parent
             if not parent_div or not isinstance(parent_div, Tag):
                 continue
-
-            # Find the body-level ancestor (direct child of <body>)
             body_div = self._find_body_child(parent_div, body)
             if body_div is None:
                 continue
-
             position = child_positions.get(id(body_div), -1)
             if position < 0:
                 continue
-
-            item_num = match.group(1).lower()
-            title = match.group(2).strip()
-
+            key = (match.group(1).lower(), position)
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
             headings.append(
                 _HeadingInfo(
-                    item_number=item_num,
-                    title=title,
+                    item_number=match.group(1).lower(),
+                    title=match.group(2).strip(),
                     element=body_div,
                     position=position,
                 )
             )
+
+        # ── Strategy 2: <div>/<p> direct item-heading text ────────────────
+        # Covers filings where Item headings sit directly in block elements
+        # without an enclosing bold span (GOOGL, AMZN 10-K format).
+        # Only runs when strategy 1 found fewer than 3 headings.
+        if len(headings) < 3:
+            for tag_name in ("div", "p"):
+                for elem in soup.find_all(tag_name):
+                    if elem.find_parent("table") is not None:
+                        continue
+                    if elem.find_parent("a") is not None:
+                        continue
+                    text = elem.get_text(strip=True)
+                    if not text or len(text) > 150:
+                        continue
+                    match = _ITEM_HEADING_RE.match(text)
+                    if not match:
+                        continue
+                    body_div = self._find_body_child(elem, body)
+                    if body_div is None:
+                        continue
+                    position = child_positions.get(id(body_div), -1)
+                    if position < 0:
+                        continue
+                    key = (match.group(1).lower(), position)
+                    if key in seen_keys:
+                        continue
+                    seen_keys.add(key)
+                    headings.append(
+                        _HeadingInfo(
+                            item_number=match.group(1).lower(),
+                            title=match.group(2).strip(),
+                            element=body_div,
+                            position=position,
+                        )
+                    )
 
         headings.sort(key=lambda h: h.position)
         return headings

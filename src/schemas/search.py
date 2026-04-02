@@ -114,6 +114,8 @@ class SearchRequest(BaseModel):
         top_k: Number of results to return (1–20).
         search_mode: Retrieval strategy to use.
         use_hyde: Whether to attempt HyDE query expansion before dense search.
+        generate: Whether to call the LLM generation step. Set to False to
+            measure pure retrieval latency or when only chunks are needed.
         filters: Optional pre-filtering criteria applied before retrieval.
     """
 
@@ -121,6 +123,7 @@ class SearchRequest(BaseModel):
     top_k: int = Field(default=5, ge=1, le=100)
     search_mode: Literal["dense", "sparse", "hybrid"] = "hybrid"
     use_hyde: bool = False
+    generate: bool = True
     filters: SearchFilters = Field(default_factory=SearchFilters)
 
 

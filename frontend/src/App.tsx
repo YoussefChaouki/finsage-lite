@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import { Toaster } from "sonner";
 import { MainLayout } from "@/components/layout/MainLayout";
 import SearchPage from "@/pages/SearchPage";
 import BrowsePage from "@/pages/BrowsePage";
@@ -44,6 +45,17 @@ export default function App() {
       <MainLayout>
         <AnimatedRoutes />
       </MainLayout>
+      <Toaster
+        position="bottom-right"
+        theme="dark"
+        toastOptions={{
+          classNames: {
+            toast: "border-slate-700 bg-slate-900 text-slate-100",
+            success: "border-emerald-800",
+            error: "border-red-800",
+          },
+        }}
+      />
     </BrowserRouter>
   );
 }
