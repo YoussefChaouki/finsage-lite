@@ -19,13 +19,14 @@ import pytest
 
 BASE_SEARCH = "/api/v1/search"
 
-# Latency ceilings in seconds (includes LLM generation via Ollama — Sprint 3)
-# Pure retrieval targets (without generation): dense ~0.5s, sparse ~0.3s, hybrid ~0.8s
-# Generation adds 5-15s depending on model and hardware.
+# Latency ceilings for pure retrieval (generate=False).
+# LLM generation is excluded — it is hardware-dependent and tested separately.
+# Targets: dense ~0.5s (embedding + pgvector), sparse ~0.3s (BM25 in-memory),
+# hybrid ~0.8s (both + RRF fusion).  Ceilings are 4× targets to allow headroom.
 LATENCY_LIMITS: dict[str, float] = {
-    "dense": 20.0,
-    "sparse": 15.0,
-    "hybrid": 20.0,
+    "dense": 2.0,
+    "sparse": 1.0,
+    "hybrid": 3.0,
 }
 
 SMOKE_QUERY = "What is Apple's total revenue?"
@@ -37,12 +38,16 @@ SMOKE_QUERY = "What is Apple's total revenue?"
 
 
 def _post_search(client: httpx.Client, mode: str, query: str) -> tuple[int, float]:
-    """Return (status_code, elapsed_seconds)."""
+    """Return (status_code, elapsed_seconds) for a retrieval-only request.
+
+    ``generate=False`` skips Ollama so we measure pure retrieval latency
+    instead of mixing hardware-dependent LLM time into the assertion.
+    """
     t0 = time.perf_counter()
     resp = client.post(
         BASE_SEARCH,
-        json={"query": query, "search_mode": mode, "top_k": 5},
-        timeout=30.0,
+        json={"query": query, "search_mode": mode, "top_k": 5, "generate": False},
+        timeout=10.0,
     )
     elapsed = time.perf_counter() - t0
     return resp.status_code, elapsed

@@ -13,6 +13,50 @@ from src.models.chunk import SectionType
 from src.services.parsing import FilingParser, ParsingError
 
 AAPL_FILING_PATH = Path("data/filings/0000320193_0000320193-25-000079.html")
+MSFT_FILING_PATH = Path("data/filings/0000789019_0000950170-24-087843.html")
+TSLA_FILING_PATH = Path("data/filings/0001318605_0000950170-22-000796.html")
+
+# Minimal synthetic 10-K HTML using font-weight:bold (MSFT/TSLA style)
+BOLD_10K_HTML = """\
+<?xml version='1.0'?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><title>bold-20240630</title></head>
+<body>
+  <div><span style="font-weight:bold">Item 1.\u00a0Business</span></div>
+  <div>Bold format business content.</div>
+  <div><span style="font-weight:bold">Item 1A.\u00a0Risk Factors</span></div>
+  <div>Bold format risk content.</div>
+  <div><span style="font-weight:bold">Item 7.\u00a0MD&amp;A</span></div>
+  <div>Bold format MD&amp;A content.</div>
+  <div><span style="font-weight:bold">Item 7A.\u00a0Market Risk</span></div>
+  <div>Bold format market risk content.</div>
+  <div><span style="font-weight:bold">Item 8.\u00a0Financial Statements</span></div>
+  <div>Bold format financials content.</div>
+  <div><span style="font-weight:bold">Item 9.\u00a0Changes in Accountants</span></div>
+  <div>Not a target section.</div>
+</body></html>
+"""
+
+# Minimal synthetic 10-K HTML with item headings in plain <div> elements (GOOGL/AMZN style)
+DIV_10K_HTML = """\
+<?xml version='1.0'?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><title>div-20231231</title></head>
+<body>
+  <div style="margin-top:14pt;text-align:center">Item 1.Business</div>
+  <div>Div format business content.</div>
+  <div style="margin-top:14pt;text-align:center">Item 1A.Risk Factors</div>
+  <div>Div format risk content.</div>
+  <div style="margin-top:14pt;text-align:center">Item 7.MD&amp;A</div>
+  <div>Div format MD&amp;A content.</div>
+  <div style="margin-top:14pt;text-align:center">Item 7A.Market Risk</div>
+  <div>Div format market risk content.</div>
+  <div style="margin-top:14pt;text-align:center">Item 8.Financial Statements</div>
+  <div>Div format financials content.</div>
+  <div style="margin-top:14pt;text-align:center">Item 9.Changes in Accountants</div>
+  <div>Not a target section.</div>
+</body></html>
+"""
 
 # Minimal synthetic 10-K HTML mimicking iXBRL format
 MINIMAL_10K_HTML = """\
@@ -282,6 +326,68 @@ def test_parse_html_empty_file(parser: FilingParser, tmp_path: Path) -> None:
         parser.parse_html(filepath)
 
 
+# --- font-weight:bold format (MSFT / TSLA style) ---
+
+
+@pytest.fixture()
+def bold_filing(tmp_path: Path) -> Path:
+    """Write bold-span format 10-K HTML to a temp file."""
+    filepath = tmp_path / "bold_filing.html"
+    filepath.write_text(BOLD_10K_HTML, encoding="utf-8")
+    return filepath
+
+
+def test_bold_format_all_five_sections(parser: FilingParser, bold_filing: Path) -> None:
+    """font-weight:bold spans are recognised as section headings."""
+    result = parser.parse_html(bold_filing)
+    expected = {
+        SectionType.ITEM_1,
+        SectionType.ITEM_1A,
+        SectionType.ITEM_7,
+        SectionType.ITEM_7A,
+        SectionType.ITEM_8,
+    }
+    assert set(result.sections.keys()) == expected
+
+
+def test_bold_format_content_extracted(parser: FilingParser, bold_filing: Path) -> None:
+    """Content between bold-span headings is correctly extracted."""
+    result = parser.parse_html(bold_filing)
+    assert "Bold format business content" in result.sections[SectionType.ITEM_1].text_content
+    assert "Bold format risk content" in result.sections[SectionType.ITEM_1A].text_content
+
+
+# --- plain-div format (GOOGL / AMZN style) ---
+
+
+@pytest.fixture()
+def div_filing(tmp_path: Path) -> Path:
+    """Write plain-div format 10-K HTML to a temp file."""
+    filepath = tmp_path / "div_filing.html"
+    filepath.write_text(DIV_10K_HTML, encoding="utf-8")
+    return filepath
+
+
+def test_div_format_all_five_sections(parser: FilingParser, div_filing: Path) -> None:
+    """Plain-<div> item headings are recognised as section headings."""
+    result = parser.parse_html(div_filing)
+    expected = {
+        SectionType.ITEM_1,
+        SectionType.ITEM_1A,
+        SectionType.ITEM_7,
+        SectionType.ITEM_7A,
+        SectionType.ITEM_8,
+    }
+    assert set(result.sections.keys()) == expected
+
+
+def test_div_format_content_extracted(parser: FilingParser, div_filing: Path) -> None:
+    """Content between div headings is correctly extracted."""
+    result = parser.parse_html(div_filing)
+    assert "Div format business content" in result.sections[SectionType.ITEM_1].text_content
+    assert "Div format MD" in result.sections[SectionType.ITEM_7].text_content
+
+
 # --- Real AAPL filing tests ---
 
 
@@ -360,3 +466,63 @@ class TestAAPLFiling:
         result = parser.parse_html(AAPL_FILING_PATH)
         # AAPL filing has Items 1 through 16
         assert len(result.all_sections_found) >= 16
+
+
+@pytest.mark.skipif(
+    not MSFT_FILING_PATH.exists(),
+    reason="MSFT filing not available locally",
+)
+class TestMSFTFiling:
+    """Tests against the real Microsoft 10-K filing (font-weight:bold format)."""
+
+    def test_all_five_sections_detected(self) -> None:
+        """All 5 target sections are extracted from the MSFT filing."""
+        parser = FilingParser()
+        result = parser.parse_html(MSFT_FILING_PATH)
+        expected = {
+            SectionType.ITEM_1,
+            SectionType.ITEM_1A,
+            SectionType.ITEM_7,
+            SectionType.ITEM_7A,
+            SectionType.ITEM_8,
+        }
+        assert set(result.sections.keys()) == expected
+
+    def test_sections_have_content(self) -> None:
+        """Each extracted section contains substantial text."""
+        parser = FilingParser()
+        result = parser.parse_html(MSFT_FILING_PATH)
+        for section_type, section in result.sections.items():
+            assert len(section.text_content) > 200, (
+                f"Section {section_type} has too little content"
+            )
+
+
+@pytest.mark.skipif(
+    not TSLA_FILING_PATH.exists(),
+    reason="TSLA filing not available locally",
+)
+class TestTSLAFiling:
+    """Tests against the real Tesla 10-K filing (font-weight:bold format)."""
+
+    def test_all_five_sections_detected(self) -> None:
+        """All 5 target sections are extracted from the TSLA filing."""
+        parser = FilingParser()
+        result = parser.parse_html(TSLA_FILING_PATH)
+        expected = {
+            SectionType.ITEM_1,
+            SectionType.ITEM_1A,
+            SectionType.ITEM_7,
+            SectionType.ITEM_7A,
+            SectionType.ITEM_8,
+        }
+        assert set(result.sections.keys()) == expected
+
+    def test_sections_have_content(self) -> None:
+        """Each extracted section contains substantial text."""
+        parser = FilingParser()
+        result = parser.parse_html(TSLA_FILING_PATH)
+        for section_type, section in result.sections.items():
+            assert len(section.text_content) > 200, (
+                f"Section {section_type} has too little content"
+            )

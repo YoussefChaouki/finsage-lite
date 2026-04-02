@@ -159,7 +159,9 @@ async def search(
     )
     response = await retrieval_service.search(body)
 
-    answer = await generation_service.generate(body.query, response.results)
+    answer = (
+        await generation_service.generate(body.query, response.results) if body.generate else None
+    )
 
     logger.info(
         "search complete — %d results in %.1fms (hyde_used=%s, answer=%s)",
