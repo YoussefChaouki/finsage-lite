@@ -64,7 +64,7 @@ export function IngestForm({ onIngest, isLoading }: IngestFormProps) {
           maxLength={10}
         />
         {tickerError && (
-          <p className="text-[10px] text-red-400">{tickerError}</p>
+          <p className="text-xs text-red-400">{tickerError}</p>
         )}
       </div>
 

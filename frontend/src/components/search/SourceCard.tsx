@@ -62,8 +62,8 @@ export function SourceCard({
           <div className="flex flex-wrap items-center gap-1.5">
             <SectionBadge section={result.section} variant="sm" />
             {isTable && (
-              <span className="inline-flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 font-mono text-[10px] text-amber-400">
-                <Table2 className="h-2.5 w-2.5" />
+              <span className="inline-flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 font-mono text-xs text-amber-400">
+                <Table2 className="h-3 w-3" />
                 TABLE
               </span>
             )}
@@ -116,21 +116,21 @@ export function SourceCard({
       {/* Metadata footer */}
       <div className="flex flex-wrap items-center gap-3 border-t border-slate-800 px-4 py-2.5">
         {typeof result.metadata.company === "string" && (
-          <span className="text-[11px] text-slate-500">
+          <span className="text-xs text-slate-500">
             {result.metadata.company}
           </span>
         )}
         {typeof result.metadata.fiscal_year === "number" && (
-          <span className="text-[11px] text-slate-500">
+          <span className="text-xs text-slate-500">
             FY{result.metadata.fiscal_year}
           </span>
         )}
         {typeof result.metadata.page_approx === "number" && (
-          <span className="text-[11px] text-slate-500">
+          <span className="text-xs text-slate-500">
             ~p.{result.metadata.page_approx}
           </span>
         )}
-        <span className="ml-auto max-w-[8rem] truncate font-mono text-[11px] text-slate-600">
+        <span className="ml-auto max-w-[8rem] truncate font-mono text-xs text-slate-600">
           {result.chunk_id.slice(0, 8)}…
         </span>
       </div>

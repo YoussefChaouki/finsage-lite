@@ -67,7 +67,7 @@ export const SearchBar = forwardRef<SearchBarHandle, SearchBarProps>(
           />
           {/* ⌘K hint — only visible when input is empty */}
           {!value && (
-            <kbd className="pointer-events-none absolute right-4 top-1/2 hidden -translate-y-1/2 select-none items-center gap-1 rounded border border-slate-700 bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] text-slate-500 sm:flex">
+            <kbd className="pointer-events-none absolute right-4 top-1/2 hidden -translate-y-1/2 select-none items-center gap-1 rounded border border-slate-700 bg-slate-800 px-1.5 py-0.5 font-mono text-xs text-slate-500 sm:flex">
               ⌘K
             </kbd>
           )}

@@ -109,57 +109,60 @@ export default function SearchPage() {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div
-      className={cn(
-        "flex flex-col px-4 sm:px-6",
-        !hasSearched && "min-h-full justify-center",
-      )}
-    >
-      {/* ── Search container — Framer layout-animates from center to top ── */}
-      <motion.div
-        layout="position"
-        transition={{ type: "spring", bounce: 0.08, duration: 0.5 }}
-        className={cn(
-          "mx-auto w-full max-w-3xl",
-          hasSearched &&
-            "sticky top-0 z-20 border-b border-slate-800/60 bg-slate-950/95 py-4 backdrop-blur-sm",
-          !hasSearched && "py-2",
-        )}
-      >
-        {/* Hero title — fades out on first search */}
-        <AnimatePresence initial={false}>
-          {!hasSearched && (
-            <motion.div
-              key="hero"
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="mb-8 text-center"
-            >
-              <h1 className="mb-2 text-4xl font-bold tracking-tight text-slate-100">
-                FinSage-Lite
-              </h1>
-              <p className="text-sm text-slate-500">
-                SEC 10-K filing intelligence · hybrid RAG
-              </p>
-            </motion.div>
+    <div className="flex min-h-full flex-col px-6 lg:px-10">
+      {/*
+        Centering wrapper — flex-1 + items-center centers the search bar
+        vertically in the remaining space above the empty state.
+        When results are shown it becomes a plain pass-through div.
+      */}
+      <div className={cn(!hasSearched && "flex flex-1 items-center justify-center")}>
+        {/* ── Search container — Framer layout-animates from center to top ── */}
+        <motion.div
+          layout="position"
+          transition={{ type: "spring", bounce: 0.08, duration: 0.5 }}
+          className={cn(
+            "mx-auto w-full max-w-4xl",
+            hasSearched &&
+              "sticky top-0 z-20 border-b border-slate-800/60 bg-slate-950/95 py-4 backdrop-blur-sm",
+            !hasSearched && "py-2",
           )}
-        </AnimatePresence>
+        >
+          {/* Hero title — fades out on first search */}
+          <AnimatePresence initial={false}>
+            {!hasSearched && (
+              <motion.div
+                key="hero"
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+                className="mb-10 text-center"
+              >
+                <h1 className="mb-3 font-display text-5xl font-bold tracking-tight text-slate-100 lg:text-6xl">
+                  FinSage
+                  <span className="text-emerald-400">.</span>
+                </h1>
+                <p className="text-base text-slate-500">
+                  SEC 10-K filing intelligence · hybrid RAG
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-        <SearchBar
-          ref={searchBarRef}
-          onSubmit={handleSearch}
-          isLoading={isLoading}
-        />
+          <SearchBar
+            ref={searchBarRef}
+            onSubmit={handleSearch}
+            isLoading={isLoading}
+          />
 
-        <div className="mt-3">
-          <SearchControls />
-        </div>
-      </motion.div>
+          <div className="mt-3">
+            <SearchControls />
+          </div>
+        </motion.div>
+      </div>
 
       {/* ── Content area ─────────────────────────────────────────────────── */}
-      <div className="mx-auto w-full max-w-3xl space-y-4 py-6">
+      <div className="mx-auto w-full max-w-4xl space-y-4 py-6">
         {/* Empty state */}
         {!hasSearched && (
           <SearchEmptyState onExampleClick={handleExampleClick} />
@@ -244,24 +247,43 @@ export default function SearchPage() {
 
         {/* Source cards */}
         {!isLoading && results.length > 0 && (
-          <div className="space-y-3">
-            <p className="text-xs text-slate-600">
+          <div>
+            <p className="mb-4 text-sm text-slate-500">
               {results.length} result{results.length !== 1 ? "s" : ""}
               {latencyMs !== null && (
                 <> · {latencyMs.toLocaleString()}ms</>
               )}
             </p>
 
-            {results.map((result, i) => (
-              <SourceCard
-                key={result.chunk_id}
-                result={result}
-                index={i + 1}
-                isHighlighted={hoveredChunkId === result.chunk_id}
-                onMouseEnter={setHoveredChunkId}
-                onMouseLeave={() => setHoveredChunkId(null)}
-              />
-            ))}
+            {/* Staggered fade-in — re-animates on each new search */}
+            <motion.div
+              key={lastQuery ?? "empty"}
+              className="space-y-3"
+              initial="hidden"
+              animate="show"
+              variants={{
+                hidden: {},
+                show: { transition: { staggerChildren: 0.05 } },
+              }}
+            >
+              {results.map((result, i) => (
+                <motion.div
+                  key={result.chunk_id}
+                  variants={{
+                    hidden: { opacity: 0, y: 8 },
+                    show: { opacity: 1, y: 0, transition: { duration: 0.2, ease: "easeOut" } },
+                  }}
+                >
+                  <SourceCard
+                    result={result}
+                    index={i + 1}
+                    isHighlighted={hoveredChunkId === result.chunk_id}
+                    onMouseEnter={setHoveredChunkId}
+                    onMouseLeave={() => setHoveredChunkId(null)}
+                  />
+                </motion.div>
+              ))}
+            </motion.div>
           </div>
         )}
       </div>

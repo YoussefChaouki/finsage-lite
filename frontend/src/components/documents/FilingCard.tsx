@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { cn, formatDate, formatNumber, generateAvatarColor } from "@/lib/utils";
 import { SectionBadge } from "@/components/ui/SectionBadge";
 import type { DocumentResponse, SectionType } from "@/lib/types";
@@ -37,9 +38,11 @@ export function FilingCard({ document, className }: FilingCardProps) {
   const availableSections = document.sections.map((s) => s.section as SectionType);
 
   return (
-    <div
+    <motion.div
+      whileHover={{ scale: 1.01 }}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
       className={cn(
-        "group flex flex-col rounded-lg border border-slate-800 bg-slate-900 p-4 transition-colors",
+        "group flex flex-col rounded-xl border border-slate-800 bg-slate-900 p-5 transition-colors",
         "hover:border-slate-700 hover:bg-slate-800/50",
         className,
       )}
@@ -48,24 +51,24 @@ export function FilingCard({ document, className }: FilingCardProps) {
       <div className="flex items-start gap-3">
         {/* Avatar */}
         <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
           style={{ backgroundColor: avatarBg }}
         >
           {initials}
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-slate-100">
+          <p className="truncate text-base font-semibold text-slate-100">
             {document.company_name}
           </p>
           <div className="mt-1 flex flex-wrap gap-1.5">
-            <span className="inline-flex items-center rounded border border-slate-700 bg-slate-800 px-1.5 py-0 font-mono text-[10px] font-medium text-slate-300">
+            <span className="inline-flex items-center rounded border border-slate-700 bg-slate-800 px-1.5 py-0 font-mono text-xs font-medium text-slate-300">
               {document.ticker}
             </span>
-            <span className="inline-flex items-center rounded border border-slate-700 bg-slate-800 px-1.5 py-0 font-mono text-[10px] font-medium text-slate-300">
+            <span className="inline-flex items-center rounded border border-slate-700 bg-slate-800 px-1.5 py-0 font-mono text-xs font-medium text-slate-300">
               FY{document.fiscal_year}
             </span>
-            <span className="inline-flex items-center rounded border border-slate-700 bg-slate-800 px-1.5 py-0 text-[10px] text-slate-400">
+            <span className="inline-flex items-center rounded border border-slate-700 bg-slate-800 px-1.5 py-0 text-xs text-slate-400">
               {document.filing_type}
             </span>
           </div>
@@ -97,11 +100,11 @@ export function FilingCard({ document, className }: FilingCardProps) {
 
       {/* ── Footer ───────────────────────────────────────────── */}
       <div className="mt-3 flex items-center justify-between border-t border-slate-800 pt-3">
-        <span className="truncate font-mono text-[10px] text-slate-500">
+        <span className="truncate font-mono text-xs text-slate-500">
           {document.accession_no}
         </span>
         <StatusIndicator processed={document.processed} />
       </div>
-    </div>
+    </motion.div>
   );
 }
