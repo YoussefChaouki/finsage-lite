@@ -27,11 +27,12 @@ services:
     restart: unless-stopped
 
   # FinSage-Lite Frontend (React + Vite)
+  # Use BUILD_TARGET=production docker compose up to build the nginx prod image
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      target: development
+      target: ${BUILD_TARGET:-development}
     container_name: finsage-frontend
     ports:
       - "5173:5173"
