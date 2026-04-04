@@ -5,6 +5,9 @@ Tests embedding dimension, batch processing, normalization,
 and basic similarity properties without requiring a database.
 """
 
+import uuid
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import numpy as np
 import pytest
 
@@ -174,3 +177,85 @@ def test_embeddings_are_float_lists(embedding_service: EmbeddingService) -> None
     assert isinstance(embeddings, list)
     assert isinstance(embeddings[0], list)
     assert isinstance(embeddings[0][0], float)
+
+
+def test_batch_size_property(embedding_service: EmbeddingService) -> None:
+    """batch_size property returns the configured batch size."""
+    assert embedding_service.batch_size == 8  # set in fixture
+
+
+# --- embed_and_store ---
+
+
+def _make_chunk_data(
+    section: SectionType = SectionType.ITEM_7,
+    section_title: str = "MD&A",
+    content_raw: str = "Revenue grew 15%.",
+    chunk_index: int = 0,
+) -> ChunkData:
+    return ChunkData(
+        section=section,
+        section_title=section_title,
+        content_type=ContentType.TEXT,
+        content_raw=content_raw,
+        content_context=f"[Apple | 10-K FY2024 | {section_title}]\n\n{content_raw}",
+        chunk_index=chunk_index,
+        metadata={"fiscal_year": 2024},
+    )
+
+
+@pytest.mark.asyncio
+async def test_embed_and_store_returns_chunk_models(
+    embedding_service: EmbeddingService,
+) -> None:
+    """embed_and_store creates and persists Chunk ORM objects for each input."""
+    doc_id = uuid.uuid4()
+    chunks = [_make_chunk_data(chunk_index=i) for i in range(3)]
+
+    mock_repo = MagicMock()
+    mock_repo.create_many = AsyncMock(return_value=None)
+
+    with patch("src.services.embedding.ChunkRepository", return_value=mock_repo):
+        result = await embedding_service.embed_and_store(chunks, doc_id, MagicMock())
+
+    assert len(result) == 3
+    mock_repo.create_many.assert_awaited_once()
+    for model in result:
+        assert model.document_id == doc_id
+        assert len(model.embedding) == 384
+
+
+@pytest.mark.asyncio
+async def test_embed_and_store_empty_raises_error(
+    embedding_service: EmbeddingService,
+) -> None:
+    """embed_and_store with an empty list raises ValueError before touching the DB."""
+    with pytest.raises(ValueError, match="empty"):
+        await embedding_service.embed_and_store([], uuid.uuid4(), MagicMock())
+
+
+@pytest.mark.asyncio
+async def test_embed_and_store_chunk_fields_populated(
+    embedding_service: EmbeddingService,
+) -> None:
+    """embed_and_store sets section, section_title, content_raw, and chunk_index."""
+    doc_id = uuid.uuid4()
+    chunk_data = _make_chunk_data(
+        section=SectionType.ITEM_8,
+        section_title="Financials",
+        content_raw="Net income was $97 billion.",
+        chunk_index=5,
+    )
+
+    mock_repo = MagicMock()
+    mock_repo.create_many = AsyncMock(return_value=None)
+
+    with patch("src.services.embedding.ChunkRepository", return_value=mock_repo):
+        result = await embedding_service.embed_and_store([chunk_data], doc_id, MagicMock())
+
+    assert len(result) == 1
+    model = result[0]
+    assert model.section == SectionType.ITEM_8
+    assert model.section_title == "Financials"
+    assert model.content_raw == "Net income was $97 billion."
+    assert model.chunk_index == 5
