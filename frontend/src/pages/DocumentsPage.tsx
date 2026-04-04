@@ -1,4 +1,4 @@
-import { FileText, Database, Building2, CheckCircle2, Layers } from "lucide-react";
+import { FileText, Building2, CheckCircle2, Layers } from "lucide-react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FilingCard } from "@/components/documents/FilingCard";
@@ -16,7 +16,7 @@ const gridVariants = {
 
 const cardItemVariants = {
   hidden: { opacity: 0, y: 8 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.2, ease: "easeOut" } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.2, ease: "easeOut" as const } },
 };
 
 interface StatTileProps {
