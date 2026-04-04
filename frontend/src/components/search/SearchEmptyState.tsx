@@ -148,7 +148,7 @@ export function SearchEmptyState({ onExampleClick }: SearchEmptyStateProps) {
   const isTyping = displayed.length < DEMO_ANSWER.length;
 
   return (
-    <div className="grid gap-12 pb-12 pt-3 lg:grid-cols-[1fr_1.2fr] lg:items-start lg:gap-10">
+    <div className="grid gap-12 pb-12 pt-6 lg:grid-cols-[1fr_1.25fr] lg:items-start lg:gap-16">
 
       {/* ══════════════════════════════════════════════
           LEFT — editorial pitch
