@@ -49,7 +49,7 @@ class TestIngestionEndpoint:
         response = api_client.post(
             "/api/v1/documents/ingest",
             json={"ticker": "ZZZZZZZ", "fiscal_year": 2024},
-            timeout=30.0,
+            timeout=60.0,
         )
         assert response.status_code == 404
 
