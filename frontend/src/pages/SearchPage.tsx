@@ -109,7 +109,7 @@ export default function SearchPage() {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex min-h-full flex-col px-6 lg:px-10">
+    <div className="flex min-h-full flex-col px-6">
       {/*
         Centering wrapper — flex-1 + items-center centers the search bar
         vertically in the remaining space above the empty state.
@@ -121,7 +121,7 @@ export default function SearchPage() {
           layout="position"
           transition={{ type: "spring", bounce: 0.08, duration: 0.5 }}
           className={cn(
-            "mx-auto w-full max-w-4xl",
+            "mx-auto w-full max-w-5xl",
             hasSearched &&
               "sticky top-0 z-20 border-b border-slate-800/60 bg-slate-950/95 py-4 backdrop-blur-sm",
             !hasSearched && "py-2",
@@ -162,7 +162,7 @@ export default function SearchPage() {
       </div>
 
       {/* ── Content area ─────────────────────────────────────────────────── */}
-      <div className="mx-auto w-full max-w-4xl space-y-4 py-6">
+      <div className="mx-auto w-full max-w-5xl space-y-4 py-6">
         {/* Empty state */}
         {!hasSearched && (
           <SearchEmptyState onExampleClick={handleExampleClick} />

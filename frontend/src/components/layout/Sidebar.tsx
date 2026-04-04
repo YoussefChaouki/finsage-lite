@@ -111,7 +111,7 @@ export function Sidebar() {
                 <div
                   className={cn(
                     "group relative flex cursor-pointer items-center rounded-xl transition-all duration-150",
-                    collapsed ? "justify-center p-2.5" : "gap-3 px-3 py-2.5",
+                    collapsed ? "justify-center p-3" : "gap-3 px-3 py-3",
                     isActive ? "text-emerald-400" : "text-slate-400 hover:text-slate-100",
                   )}
                   style={
@@ -138,7 +138,7 @@ export function Sidebar() {
                   <div
                     className={cn(
                       "flex shrink-0 items-center justify-center rounded-lg transition-all",
-                      collapsed ? "h-9 w-9" : "h-8 w-8",
+                      collapsed ? "h-9 w-9" : "h-9 w-9",
                     )}
                     style={
                       isActive
@@ -149,7 +149,7 @@ export function Sidebar() {
                     }
                   >
                     <Icon
-                      size={collapsed ? 17 : 15}
+                      size={collapsed ? 18 : 16}
                       className={cn(
                         isActive
                           ? "text-emerald-400"
@@ -161,13 +161,13 @@ export function Sidebar() {
                   {/* Label + description */}
                   {!collapsed && (
                     <div className="min-w-0 flex-1">
-                      <p className="text-[13px] font-semibold leading-tight">{label}</p>
+                      <p className="text-sm font-semibold leading-tight">{label}</p>
                       <p
                         className={cn(
-                          "mt-px text-[11px] leading-tight",
+                          "mt-0.5 text-xs leading-tight",
                           isActive
-                            ? "text-emerald-500/50"
-                            : "text-slate-600 group-hover:text-slate-500",
+                            ? "text-emerald-500/60"
+                            : "text-slate-500 group-hover:text-slate-400",
                         )}
                       >
                         {desc}
