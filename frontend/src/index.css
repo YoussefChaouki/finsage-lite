@@ -1,5 +1,5 @@
-/* Google Fonts — Inter + JetBrains Mono */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+/* Google Fonts — DM Sans (body) + Sora (display) + JetBrains Mono */
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -41,14 +41,60 @@
 }
 
 @layer base {
+  :root {
+    --ring: 160.1 84% 39.4%; /* emerald-500 — overrides shadcn default */
+  }
+
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground font-sans;
     font-feature-settings: "rlig" 1, "calt" 1;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   html {
     color-scheme: dark;
   }
+}
+
+/* ─── Custom scrollbar ───────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #020617;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* ─── Text selection ─────────────────────────────────────────────────── */
+::selection {
+  background: rgb(16 185 129 / 0.3);
+}
+
+/* ─── Coherent focus rings ───────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #10b981;
+  outline-offset: 2px;
+}
+
+/* ─── Demo panel dot-grid texture ───────────────────────────────────── */
+.demo-panel-grid {
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* ─── Tabular number rendering ───────────────────────────────────────── */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
