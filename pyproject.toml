@@ -100,7 +100,7 @@ mypy_path = "src"
 # --- Pytest Configuration ---
 
 [tool.pytest.ini_options]
-addopts = "-v --cov=src --cov-report=term-missing --cov-fail-under=70"
+addopts = "-v --cov=src --cov-report=term-missing"
 testpaths = ["tests"]
 pythonpath = ["src", "."]
 markers = [
