@@ -49,15 +49,27 @@ export function SectionContent({ chunks, sectionTitle, isLoading, error }: Secti
       <div ref={topRef} />
 
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800 bg-slate-950/90 px-6 py-3 backdrop-blur-sm">
-        <h2 className="text-sm font-semibold text-slate-100">{sectionTitle}</h2>
-        <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-xs font-mono text-slate-400">
+      <div
+        className="sticky top-0 z-10 flex items-center justify-between border-b px-6 py-4 backdrop-blur-md"
+        style={{
+          background: "rgba(6,11,22,0.92)",
+          borderColor: "rgba(255,255,255,0.05)",
+        }}
+      >
+        <h2 className="font-display text-base font-semibold text-slate-100">{sectionTitle}</h2>
+        <span
+          className="rounded-full px-3 py-1 font-mono text-xs text-slate-400"
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.07)",
+          }}
+        >
           {chunks.length} chunks
         </span>
       </div>
 
       {/* Chunks */}
-      <div className="px-6 py-4 space-y-0">
+      <div className="space-y-0 px-8 py-6">
         {chunks.map((chunk, idx) => {
           const tableTitle = typeof chunk.metadata.table_title === "string"
             ? chunk.metadata.table_title
@@ -66,17 +78,22 @@ export function SectionContent({ chunks, sectionTitle, isLoading, error }: Secti
 
           return (
             <div key={chunk.chunk_id}>
-              {idx > 0 && <div className="border-t border-slate-800/50 my-4" />}
+              {idx > 0 && (
+                <div
+                  className="my-5 h-px"
+                  style={{ background: "rgba(255,255,255,0.04)" }}
+                />
+              )}
               <div className="space-y-2">
                 {isTable ? (
                   <>
-                    <p className="text-sm font-medium text-slate-300">
+                    <p className="text-sm font-medium text-slate-400">
                       📊 {tableTitle}
                     </p>
                     <TableChunkView content={chunk.content} tableTitle={tableTitle} />
                   </>
                 ) : (
-                  <p className="text-sm leading-7 text-slate-300 prose-slate whitespace-pre-wrap">
+                  <p className="text-[0.9375rem] leading-[1.8] text-slate-300 whitespace-pre-wrap">
                     {chunk.content}
                   </p>
                 )}
@@ -86,8 +103,9 @@ export function SectionContent({ chunks, sectionTitle, isLoading, error }: Secti
         })}
 
         {chunks.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center gap-2">
-            <p className="text-slate-500 text-sm">No chunks found for this section.</p>
+          <div className="flex flex-col items-center justify-center py-20 text-center gap-2">
+            <p className="text-base text-slate-500">No chunks found for this section.</p>
+            <p className="text-sm text-slate-700">The section may be empty or not yet processed.</p>
           </div>
         )}
       </div>
