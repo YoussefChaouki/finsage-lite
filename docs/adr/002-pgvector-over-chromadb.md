@@ -3,6 +3,9 @@
 ## Status
 Accepted
 
+## Date
+2026-02
+
 ## Context
 The system needs a vector store for embedding-based retrieval.
 Options considered: pgvector (PostgreSQL extension), ChromaDB

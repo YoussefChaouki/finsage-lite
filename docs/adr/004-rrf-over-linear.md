@@ -3,6 +3,9 @@
 ## Status
 Accepted
 
+## Date
+2026-03
+
 ## Context
 Hybrid retrieval requires fusing ranked lists from dense (cosine similarity)
 and sparse (BM25 score) retrieval. The two scoring scales are incomparable:

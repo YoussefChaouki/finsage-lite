@@ -3,6 +3,9 @@
 ## Status
 Accepted
 
+## Date
+2026-02
+
 ## Context
 10-K filings contain distinct sections (Business, Risk Factors, MD&A,
 Financial Statements) with different content types and retrieval needs.

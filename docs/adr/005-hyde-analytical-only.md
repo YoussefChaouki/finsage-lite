@@ -3,6 +3,9 @@
 ## Status
 Accepted
 
+## Date
+2026-03
+
 ## Context
 HyDE (Hypothetical Document Embeddings) generates a hypothetical answer
 passage via LLM, then embeds that passage instead of the raw query.

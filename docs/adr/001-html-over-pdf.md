@@ -3,6 +3,9 @@
 ## Status
 Accepted
 
+## Date
+2026-02
+
 ## Context
 SEC EDGAR provides 10-K filings in two formats: PDF and iXBRL HTML.
 Most RAG tutorials use PDF parsers (PyPDF, Camelot, LlamaParse) to extract

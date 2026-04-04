@@ -2,6 +2,9 @@
 
 ## Statut : Accepté
 
+## Date
+2026-03
+
 ## Contexte
 
 FinSage-Lite vise une évaluation rigoureuse de son pipeline RAG sur des questions financières

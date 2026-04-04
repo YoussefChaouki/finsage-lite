@@ -3,6 +3,9 @@
 ## Status
 Accepted
 
+## Date
+2026-02
+
 ## Context
 Hybrid retrieval requires a sparse (lexical) search component alongside
 dense (embedding) search. Options: Elasticsearch/OpenSearch (full-text
