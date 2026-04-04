@@ -12,3 +12,5 @@ decision, and the consequences — positive and negative.
 | 004 | RRF fusion over linear score combination | Accepted | 2026-03 |
 | 005 | HyDE only on analytical queries | Accepted | 2026-03 |
 | 006 | Section-aware chunking with dual content | Accepted | 2026-02 |
+| 007 | Table extraction strategy | Accepted | 2026-03 |
+| 008 | Eval corpus scope (FinanceBench) | Accepted | 2026-03 |
