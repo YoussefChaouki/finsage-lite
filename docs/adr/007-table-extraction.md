@@ -3,6 +3,9 @@
 ## Status
 Accepted
 
+## Date
+2026-03
+
 ## Context
 SEC 10-K filings contain a large number of financial tables: income statements,
 balance sheets, cash flow statements, segment breakdowns, and footnote schedules.
