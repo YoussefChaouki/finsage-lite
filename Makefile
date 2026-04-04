@@ -9,7 +9,7 @@
         docker-up docker-down docker-logs rebuild \
         db-shell migrate seed evaluate evaluate-with-ragas evaluate-report \
         ablation benchmark rebuild-bm25 inspect-dataset clean \
-        frontend-dev frontend-build frontend-install
+        frontend-dev frontend-build frontend-install frontend-check
 
 # ==============================================================================
 # Help
@@ -66,7 +66,7 @@ format: ## Auto-format code with ruff
 type-check: ## Run type checker only
 	mypy src/ --strict
 
-check: ## Quick pre-commit validation (format + lint + unit tests)
+check: ## Quick pre-commit validation (format + lint + unit tests + frontend types)
 	@echo "━━━ Formatting ━━━"
 	ruff format --check .
 	@echo "━━━ Linting ━━━"
@@ -75,6 +75,8 @@ check: ## Quick pre-commit validation (format + lint + unit tests)
 	mypy src/ --strict
 	@echo "━━━ Unit Tests ━━━"
 	pytest tests/unit/ -v --tb=short
+	@echo "━━━ Frontend Types ━━━"
+	$(MAKE) frontend-check
 	@echo ""
 	@echo "✓ All checks passed"
 
@@ -142,14 +144,17 @@ rebuild-bm25: ## Rebuild the in-memory BM25 index via the API
 # Frontend (React + Vite)
 # ==============================================================================
 
-frontend-install: ## Install frontend npm dependencies
-	cd frontend && npm install
+frontend-install: ## Install frontend npm dependencies (clean install)
+	cd frontend && npm ci
 
 frontend-dev: ## Start Vite dev server locally (outside Docker) on :5173
 	cd frontend && npm run dev
 
 frontend-build: ## Build production static assets into frontend/dist/
 	cd frontend && npm run build
+
+frontend-check: ## Type-check the frontend TypeScript
+	cd frontend && npm run type-check
 
 # ==============================================================================
 # Cleanup

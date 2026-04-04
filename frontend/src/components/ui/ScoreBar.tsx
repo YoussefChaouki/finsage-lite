@@ -40,7 +40,7 @@ export function ScoreBar({ score, showValue = true, className }: ScoreBarProps) 
               />
             </div>
             {showValue && (
-              <span className="w-8 text-right font-mono text-[10px] text-slate-400">
+              <span className="w-8 text-right font-mono text-xs text-slate-400">
                 {score.toFixed(2)}
               </span>
             )}

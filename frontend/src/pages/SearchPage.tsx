@@ -1,10 +1,11 @@
 /**
  * SearchPage — the main search experience.
  *
- * Layout behaviour:
- * - Before first search: search bar + controls centered vertically on the page.
- * - After first search: search bar becomes sticky at the top; results scroll below.
- * - Framer Motion `layout` on the search container animates the position change.
+ * Layout:
+ * - Pre-search: hero title centered, search bar centered (max-w-2xl),
+ *   empty state fills the full available width below.
+ * - Post-search: full-width sticky header (bg covers entire top bar),
+ *   results in a readable max-w-4xl column.
  *
  * Bidirectional highlight:
  * - CitationChip hover → highlights matching SourceCard (emerald ring)
@@ -26,7 +27,6 @@ import { AnswerPanel, type Citation } from "@/components/search/AnswerPanel";
 import { SourceCard } from "@/components/search/SourceCard";
 import { SearchEmptyState } from "@/components/search/SearchEmptyState";
 import { SkeletonCard } from "@/components/ui/SkeletonCard";
-import { cn } from "@/lib/utils";
 
 export default function SearchPage() {
   const {
@@ -44,19 +44,17 @@ export default function SearchPage() {
   const { selectedCompany, selectedYear, selectedMode, hydeEnabled } =
     useAppStore();
 
-  // Local state
   const [hoveredChunkId, setHoveredChunkId] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
   const searchBarRef = useRef<SearchBarHandle>(null);
 
-  // Citations: index (1-based) → chunk_id
   const citations: Citation[] = results.map((r, i) => ({
     id: i + 1,
     chunk_id: r.chunk_id,
   }));
 
-  // ─── Handlers ────────────────────────────────────────────────────────────────
+  // ─── Handlers ──────────────────────────────────────────────────────────────
 
   const handleSearch = useCallback(
     (q: string): void => {
@@ -89,8 +87,6 @@ export default function SearchPage() {
     setTimeout(() => setHoveredChunkId(null), 2000);
   }, []);
 
-  // ─── Keyboard shortcuts ───────────────────────────────────────────────────
-
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -106,165 +102,203 @@ export default function SearchPage() {
     return () => window.removeEventListener("keydown", handler);
   }, [hasSearched, clearResults]);
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div
-      className={cn(
-        "flex flex-col px-4 sm:px-6",
-        !hasSearched && "min-h-full justify-center",
-      )}
-    >
-      {/* ── Search container — Framer layout-animates from center to top ── */}
-      <motion.div
-        layout="position"
-        transition={{ type: "spring", bounce: 0.08, duration: 0.5 }}
-        className={cn(
-          "mx-auto w-full max-w-3xl",
-          hasSearched &&
-            "sticky top-0 z-20 border-b border-slate-800/60 bg-slate-950/95 py-4 backdrop-blur-sm",
-          !hasSearched && "py-2",
-        )}
-      >
-        {/* Hero title — fades out on first search */}
-        <AnimatePresence initial={false}>
-          {!hasSearched && (
+    <div className="flex min-h-full flex-col">
+
+      {/* ══════════════════════════════════════════
+          PRE-SEARCH STATE — hero + search bar
+      ══════════════════════════════════════════ */}
+      {!hasSearched && (
+        <>
+          {/* Hero + search bar — centered section */}
+          <div className="flex flex-1 flex-col items-center justify-center px-8 pb-4 pt-16">
+            {/* Title */}
             <motion.div
-              key="hero"
-              initial={{ opacity: 0, y: -8 }}
+              initial={{ opacity: 0, y: -12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="mb-8 text-center"
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="mb-10 text-center"
             >
-              <h1 className="mb-2 text-4xl font-bold tracking-tight text-slate-100">
-                FinSage-Lite
+              <h1 className="font-display text-6xl font-bold tracking-tight text-slate-100 lg:text-7xl">
+                FinSage<span className="text-emerald-400">.</span>
               </h1>
-              <p className="text-sm text-slate-500">
+              <p className="mt-3 text-base text-slate-500">
                 SEC 10-K filing intelligence · hybrid RAG
               </p>
             </motion.div>
-          )}
-        </AnimatePresence>
 
-        <SearchBar
-          ref={searchBarRef}
-          onSubmit={handleSearch}
-          isLoading={isLoading}
-        />
-
-        <div className="mt-3">
-          <SearchControls />
-        </div>
-      </motion.div>
-
-      {/* ── Content area ─────────────────────────────────────────────────── */}
-      <div className="mx-auto w-full max-w-3xl space-y-4 py-6">
-        {/* Empty state */}
-        {!hasSearched && (
-          <SearchEmptyState onExampleClick={handleExampleClick} />
-        )}
-
-        {/* Error banner */}
-        <AnimatePresence>
-          {error && (
+            {/* Search bar — focused width */}
             <motion.div
-              key="error"
-              initial={{ opacity: 0, y: -6 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.2 }}
-              className="flex items-center gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400"
+              transition={{ duration: 0.35, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full max-w-2xl"
             >
-              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-              <span className="flex-1">{error}</span>
-              {lastQuery && (
-                <button
-                  type="button"
-                  onClick={() => handleSearch(lastQuery)}
-                  className="flex items-center gap-1.5 rounded border border-red-500/30 px-2.5 py-1 text-xs transition-colors hover:bg-red-500/20"
-                >
-                  <RotateCcw className="h-3 w-3" />
-                  Retry
-                </button>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* HyDE offline warning */}
-        <AnimatePresence>
-          {!isLoading && results.length > 0 && hydeEnabled && !hydeUsed && (
-            <motion.div
-              key="hyde-warn"
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.2 }}
-              className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400"
-            >
-              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-              <span>
-                HyDE was requested but Ollama is unavailable. Search ran without
-                query expansion.
-              </span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Loading skeletons */}
-        {isLoading && (
-          <div className="space-y-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <SkeletonCard key={i} lines={4} />
-            ))}
-          </div>
-        )}
-
-        {/* AI answer */}
-        {!isLoading && answer !== null && (
-          <AnswerPanel
-            answer={answer}
-            citations={citations}
-            latencyMs={latencyMs}
-            onHoverCitation={setHoveredChunkId}
-            onClickCitation={handleClickCitation}
-          />
-        )}
-
-        {/* No LLM answer info banner */}
-        {!isLoading && answer === null && results.length > 0 && (
-          <div className="flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/40 px-4 py-3 text-sm text-slate-400">
-            <Info className="h-4 w-4 flex-shrink-0" />
-            <span>
-              Showing retrieved chunks — no AI synthesis available from the LLM.
-            </span>
-          </div>
-        )}
-
-        {/* Source cards */}
-        {!isLoading && results.length > 0 && (
-          <div className="space-y-3">
-            <p className="text-xs text-slate-600">
-              {results.length} result{results.length !== 1 ? "s" : ""}
-              {latencyMs !== null && (
-                <> · {latencyMs.toLocaleString()}ms</>
-              )}
-            </p>
-
-            {results.map((result, i) => (
-              <SourceCard
-                key={result.chunk_id}
-                result={result}
-                index={i + 1}
-                isHighlighted={hoveredChunkId === result.chunk_id}
-                onMouseEnter={setHoveredChunkId}
-                onMouseLeave={() => setHoveredChunkId(null)}
+              <SearchBar
+                ref={searchBarRef}
+                onSubmit={handleSearch}
+                isLoading={isLoading}
               />
-            ))}
+              <div className="mt-3">
+                <SearchControls />
+              </div>
+            </motion.div>
           </div>
-        )}
-      </div>
+
+          {/* Empty state — full available width */}
+          <div className="px-8 pb-10 lg:px-12">
+            <SearchEmptyState onExampleClick={handleExampleClick} />
+          </div>
+        </>
+      )}
+
+      {/* ══════════════════════════════════════════
+          POST-SEARCH STATE — sticky header + results
+      ══════════════════════════════════════════ */}
+      {hasSearched && (
+        <>
+          {/* Full-width sticky header — bg covers the entire bar */}
+          <div
+            className="sticky top-0 z-20 w-full border-b border-slate-800/60 bg-slate-950/95 backdrop-blur-sm"
+          >
+            <div className="mx-auto max-w-4xl px-8 py-4">
+              <SearchBar
+                ref={searchBarRef}
+                onSubmit={handleSearch}
+                isLoading={isLoading}
+              />
+              <div className="mt-3">
+                <SearchControls />
+              </div>
+            </div>
+          </div>
+
+          {/* Results */}
+          <div className="mx-auto w-full max-w-4xl space-y-4 px-8 py-6">
+            {/* Error banner */}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  key="error"
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400"
+                >
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                  <span className="flex-1">{error}</span>
+                  {lastQuery && (
+                    <button
+                      type="button"
+                      onClick={() => handleSearch(lastQuery)}
+                      className="flex items-center gap-1.5 rounded border border-red-500/30 px-2.5 py-1 text-xs transition-colors hover:bg-red-500/20"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      Retry
+                    </button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* HyDE offline warning */}
+            <AnimatePresence>
+              {!isLoading && results.length > 0 && hydeEnabled && !hydeUsed && (
+                <motion.div
+                  key="hyde-warn"
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400"
+                >
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                  <span>
+                    HyDE was requested but Ollama is unavailable. Search ran
+                    without query expansion.
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Loading skeletons */}
+            {isLoading && (
+              <div className="space-y-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <SkeletonCard key={i} lines={4} />
+                ))}
+              </div>
+            )}
+
+            {/* AI answer */}
+            {!isLoading && answer !== null && (
+              <AnswerPanel
+                answer={answer}
+                citations={citations}
+                latencyMs={latencyMs}
+                onHoverCitation={setHoveredChunkId}
+                onClickCitation={handleClickCitation}
+              />
+            )}
+
+            {/* No LLM answer info banner */}
+            {!isLoading && answer === null && results.length > 0 && (
+              <div className="flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/40 px-4 py-3 text-sm text-slate-400">
+                <Info className="h-4 w-4 flex-shrink-0" />
+                <span>
+                  Showing retrieved chunks — no AI synthesis available from the LLM.
+                </span>
+              </div>
+            )}
+
+            {/* Source cards */}
+            {!isLoading && results.length > 0 && (
+              <div>
+                <p className="mb-4 text-sm text-slate-500">
+                  {results.length} result{results.length !== 1 ? "s" : ""}
+                  {latencyMs !== null && <> · {latencyMs.toLocaleString()}ms</>}
+                </p>
+
+                <motion.div
+                  key={lastQuery ?? "empty"}
+                  className="space-y-3"
+                  initial="hidden"
+                  animate="show"
+                  variants={{
+                    hidden: {},
+                    show: { transition: { staggerChildren: 0.05 } },
+                  }}
+                >
+                  {results.map((result, i) => (
+                    <motion.div
+                      key={result.chunk_id}
+                      variants={{
+                        hidden: { opacity: 0, y: 8 },
+                        show: {
+                          opacity: 1,
+                          y: 0,
+                          transition: { duration: 0.2, ease: "easeOut" },
+                        },
+                      }}
+                    >
+                      <SourceCard
+                        result={result}
+                        index={i + 1}
+                        isHighlighted={hoveredChunkId === result.chunk_id}
+                        onMouseEnter={setHoveredChunkId}
+                        onMouseLeave={() => setHoveredChunkId(null)}
+                      />
+                    </motion.div>
+                  ))}
+                </motion.div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

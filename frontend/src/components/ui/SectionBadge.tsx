@@ -26,7 +26,7 @@ export function SectionBadge({
     <span
       className={cn(
         "inline-flex items-center rounded border px-1.5 font-mono font-medium",
-        variant === "sm" ? "py-0 text-[10px]" : "py-0.5 text-xs",
+        variant === "sm" ? "py-0 text-xs" : "py-0.5 text-xs",
         style.badge,
         className,
       )}

@@ -110,20 +110,20 @@ export function AnswerPanel({
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-emerald-400" />
           <span className="text-sm font-semibold text-emerald-400">Answer</span>
-          <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/20 px-1.5 py-0.5 font-medium text-[10px] text-emerald-400">
+          <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/20 px-2 py-0.5 font-medium text-xs text-emerald-400">
             AI Generated
           </span>
         </div>
         {latencyMs !== null && (
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-            <Clock className="h-3 w-3" />
+          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+            <Clock className="h-3.5 w-3.5" />
             <span>{latencyMs.toLocaleString()}ms</span>
           </div>
         )}
       </div>
 
       {/* Typewriter text with inline citations */}
-      <p className="text-sm leading-relaxed text-slate-200">
+      <p className="text-[0.9375rem] leading-relaxed text-slate-200">
         {segments.map((seg, i) => {
           if (seg.type === "text") {
             return <span key={i}>{seg.text}</span>;
