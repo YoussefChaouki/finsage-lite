@@ -214,3 +214,56 @@ async def test_embedding_called_with_query_in_list() -> None:
     await svc.dense_search("What is Apple's revenue?", top_k=3)
 
     embedding_svc.embed_texts.assert_called_once_with(["What is Apple's revenue?"])
+
+
+# ---------------------------------------------------------------------------
+# dense_search_with_embedding
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_dense_search_with_embedding_skips_embed_texts() -> None:
+    """dense_search_with_embedding does not call embed_texts."""
+    chunk = _make_chunk()
+    svc, embedding_svc, _ = _make_service([(chunk, 0.75)])
+
+    await svc.dense_search_with_embedding([0.2] * 384, top_k=1)
+
+    embedding_svc.embed_texts.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_dense_search_with_embedding_passes_vector_to_repo() -> None:
+    """The pre-computed embedding is forwarded directly to the repository."""
+    svc, _, repo = _make_service([])
+
+    precomputed = [float(i) / 384 for i in range(384)]
+    await svc.dense_search_with_embedding(precomputed, top_k=5)
+
+    call_kwargs = repo.search_by_cosine_similarity.call_args.kwargs
+    assert call_kwargs["embedding"] == precomputed
+    assert call_kwargs["top_k"] == 5
+
+
+@pytest.mark.asyncio
+async def test_dense_search_with_embedding_results_sorted_descending() -> None:
+    """Results are sorted by score descending regardless of repo order."""
+    chunks = [_make_chunk() for _ in range(3)]
+    repo_rows = [(chunks[0], 0.5), (chunks[1], 0.9), (chunks[2], 0.7)]
+    svc, _, _ = _make_service(repo_rows)
+
+    results = await svc.dense_search_with_embedding([0.1] * 384, top_k=3)
+
+    scores = [r.score for r in results]
+    assert scores == sorted(scores, reverse=True)
+
+
+@pytest.mark.asyncio
+async def test_dense_search_with_embedding_default_filters() -> None:
+    """Omitting filters defaults to an empty SearchFilters."""
+    svc, _, repo = _make_service([])
+
+    await svc.dense_search_with_embedding([0.0] * 384)
+
+    call_kwargs = repo.search_by_cosine_similarity.call_args.kwargs
+    assert call_kwargs["filters"] == SearchFilters()

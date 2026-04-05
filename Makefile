@@ -47,7 +47,7 @@ test: ## Run all tests (unit + integration)
 	pytest tests/ -v
 
 test-unit: ## Run unit tests only (no Docker needed)
-	pytest tests/unit/ -v --tb=short
+	pytest tests/unit/ -v --tb=short --cov-fail-under=70
 
 test-int: ## Run integration tests (requires: make docker-up)
 	pytest tests/integration/ -v
