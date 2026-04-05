@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.routers import document, health, search
-from src.core.config import settings
+from src.core.config import _DEFAULT_POSTGRES_PASSWORD, settings
 from src.core.database import AsyncSessionLocal, init_db
 from src.core.logging import setup_logging
 from src.services.bm25_service import BM25Service
@@ -39,6 +39,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # Startup
     setup_logging()
+
+    if settings.POSTGRES_PASSWORD == _DEFAULT_POSTGRES_PASSWORD:
+        logger.warning(
+            "SECURITY: POSTGRES_PASSWORD is set to the default value. "
+            "Change it before deploying to production."
+        )
+
     await init_db()
 
     embedding_service = EmbeddingService()
@@ -71,7 +78,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
