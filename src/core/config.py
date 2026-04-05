@@ -5,7 +5,10 @@ Centralized settings management using Pydantic BaseSettings.
 All values are loaded from environment variables or .env file.
 """
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_DEFAULT_POSTGRES_PASSWORD = "finsage_password"
 
 
 class Settings(BaseSettings):
@@ -17,7 +20,7 @@ class Settings(BaseSettings):
 
     Optional env vars:
         POSTGRES_PORT (5432), LOG_LEVEL (INFO), OLLAMA_BASE_URL,
-        OLLAMA_MODEL (mistral), EDGAR_USER_AGENT
+        OLLAMA_MODEL (mistral), EDGAR_USER_AGENT, CORS_ORIGINS
     """
 
     PROJECT_NAME: str = "FinSage-Lite"
@@ -59,11 +62,25 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
 
+    # CORS — restrict to your actual frontend domain(s) in production
+    CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_ignore_empty=True,
         extra="ignore",  # Silently ignore unknown env vars
     )
+
+    @field_validator("EDGAR_USER_AGENT")
+    @classmethod
+    def validate_edgar_user_agent(cls, v: str) -> str:
+        """Enforce SEC requirement: User-Agent must contain a contact email."""
+        if "@" not in v:
+            raise ValueError(
+                "EDGAR_USER_AGENT must contain an email address as required by SEC EDGAR. "
+                'Example: "FinSage-Lite contact@example.com"'
+            )
+        return v
 
     @property
     def DATABASE_URL(self) -> str:

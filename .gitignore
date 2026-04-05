@@ -137,6 +137,9 @@ celerybeat.pid
 # Environments
 .env
 .envrc
+
+# Claude Code project instructions (local dev tool config, not for VCS)
+CLAUDE.md
 .venv
 env/
 venv/

@@ -249,7 +249,14 @@ Key settings via `.env` (see [.env.example](.env.example)):
 | `OLLAMA_MODEL` | `mistral` | Ollama model to use |
 | `DEFAULT_TOP_K` | `5` | Default number of retrieved chunks |
 | `RRF_K` | `60` | RRF fusion constant |
+| `CORS_ORIGINS` | `["http://localhost:5173"]` | Allowed frontend origins (JSON list) |
 | `POSTGRES_*` | see file | Database connection settings |
+
+> **Security notes**
+> - Never commit `.env` — it is listed in `.gitignore`
+> - `EDGAR_USER_AGENT` must include a valid email address (SEC EDGAR requirement); startup will reject an agent string without `@`
+> - Change `POSTGRES_PASSWORD` before deploying to production; the app logs a warning at startup if the default value is detected
+> - Restrict `CORS_ORIGINS` to your actual domain(s) in production
 
 ---
 
