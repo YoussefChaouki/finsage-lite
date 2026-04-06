@@ -36,6 +36,7 @@ export default function SearchPage() {
     isLoading,
     error,
     hydeUsed,
+    hydeAttempted,
     latencyMs,
     submitSearch,
     clearResults,
@@ -168,6 +169,7 @@ export default function SearchPage() {
                 ref={searchBarRef}
                 onSubmit={handleSearch}
                 isLoading={isLoading}
+                defaultValue={lastQuery}
               />
               <div className="mt-3">
                 <SearchControls />
@@ -206,7 +208,7 @@ export default function SearchPage() {
 
             {/* HyDE offline warning */}
             <AnimatePresence>
-              {!isLoading && results.length > 0 && hydeEnabled && !hydeUsed && (
+              {!isLoading && results.length > 0 && hydeEnabled && hydeAttempted && !hydeUsed && (
                 <motion.div
                   key="hyde-warn"
                   initial={{ opacity: 0, y: -6 }}

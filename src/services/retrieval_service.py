@@ -169,11 +169,14 @@ class RetrievalService:
         #   (a) caller opts in via use_hyde=True
         #   (b) the query is analytical (heuristic)
         #   (c) we need dense embeddings (mode != "sparse")
-        hyde_applied = request.use_hyde and mode != "sparse" and is_analytical_query(query)
+        # hyde_attempted: caller opted in AND mode supports dense AND query is analytical
+        hyde_attempted = request.use_hyde and mode != "sparse" and is_analytical_query(query)
+        hyde_applied = False
 
         query_embedding: list[float] | None = None
-        if hyde_applied:
+        if hyde_attempted:
             query_embedding = await self._hyde.expand_query_to_embedding(query)
+            hyde_applied = True
             logger.debug("HyDE embedding computed for query: %r", query[:80])
 
         # ------------------------------------------------------------------
@@ -208,6 +211,7 @@ class RetrievalService:
             query=query,
             search_mode=mode,
             hyde_used=hyde_applied,
+            hyde_attempted=hyde_attempted,
             latency_ms=latency_ms,
         )
 

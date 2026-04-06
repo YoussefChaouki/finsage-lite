@@ -184,7 +184,7 @@ export function Sidebar() {
         {!collapsed && (
           <div className="shrink-0 px-5 pb-2">
             <p className="font-mono text-[10px] text-slate-700">
-              © 2025 Youssef Chaouki
+              © 2026 Youssef Chaouki
             </p>
           </div>
         )}
