@@ -10,6 +10,7 @@ is factual rather than analytical.
 from __future__ import annotations
 
 import logging
+import re
 
 import httpx
 
@@ -58,14 +59,8 @@ ANALYTICAL_KEYWORDS = {
     "cause",
     "reasons",
     "reason",
-    "key",
-    "main",
-    "primary",
-    "major",
     "breakdown",
     "contribution",
-    "what",
-    "which",
     "explain",
     "describe",
     "analysis",
@@ -81,13 +76,16 @@ def is_analytical_query(query: str) -> bool:
     ANALYTICAL_KEYWORDS, indicating it asks for comparison, trend analysis, or
     causal reasoning rather than a simple factual lookup.
 
+    Uses regex tokenisation to strip punctuation before matching, so trailing
+    characters like ``?`` or ``'s`` don't prevent keyword detection.
+
     Args:
         query: The raw user query string.
 
     Returns:
         True if the query is analytical, False if it appears factual.
     """
-    tokens = set(query.lower().split())
+    tokens = set(re.findall(r"\b[a-z0-9][a-z0-9-]*\b", query.lower()))
     return bool(tokens & ANALYTICAL_KEYWORDS)
 
 
