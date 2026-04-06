@@ -146,6 +146,7 @@ class SearchResponse(BaseModel):
     query: str
     search_mode: str
     hyde_used: bool
+    hyde_attempted: bool = False
     latency_ms: float
 
 

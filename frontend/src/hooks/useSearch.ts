@@ -23,6 +23,7 @@ interface UseSearchReturn {
   isLoading: boolean;
   error: string | null;
   hydeUsed: boolean;
+  hydeAttempted: boolean;
   latencyMs: number | null;
   submitSearch: (params: SearchParams) => Promise<void>;
   clearResults: () => void;
@@ -35,6 +36,7 @@ export function useSearch(): UseSearchReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hydeUsed, setHydeUsed] = useState(false);
+  const [hydeAttempted, setHydeAttempted] = useState(false);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
 
   const submitSearch = useCallback(
@@ -48,6 +50,7 @@ export function useSearch(): UseSearchReturn {
         setResults(response.results);
         setAnswer(response.answer);
         setHydeUsed(response.hyde_used);
+        setHydeAttempted(response.hyde_attempted);
         setLatencyMs(response.latency_ms);
       } catch (err) {
         if (err instanceof ApiError) {
@@ -76,6 +79,7 @@ export function useSearch(): UseSearchReturn {
     setAnswer(null);
     setError(null);
     setHydeUsed(false);
+    setHydeAttempted(false);
     setLatencyMs(null);
   }, []);
 
@@ -86,6 +90,7 @@ export function useSearch(): UseSearchReturn {
     isLoading,
     error,
     hydeUsed,
+    hydeAttempted,
     latencyMs,
     submitSearch,
     clearResults,
