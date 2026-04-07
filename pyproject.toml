@@ -5,7 +5,7 @@
 
 [project]
 name = "finsage-lite"
-version = "0.1.0"
+version = "1.0.0"
 description = "SEC 10-K filing analysis RAG system with hybrid retrieval"
 requires-python = ">=3.11"
 dependencies = [

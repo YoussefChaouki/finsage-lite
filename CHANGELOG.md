@@ -7,6 +7,24 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
+## [1.0.0] — 2026-04 — Production Release
+
+### Summary
+First production-ready release of FinSage-Lite. Complete SEC 10-K RAG
+pipeline with hybrid retrieval (BM25 + pgvector + RRF), HyDE query
+expansion, table extraction, FinanceBench evaluation harness, and a
+professional React terminal-style frontend.
+
+### Highlights
+- Hybrid retrieval achieving Recall@5 ≥ 85% on FinanceBench subset
+- Section-aware chunking with dual-content strategy (220 token chunks)
+- 40+ financial tables extracted per filing via 3-step fallback chain
+- React frontend with bidirectional citation highlighting
+- 86+ unit tests, CI/CD via GitHub Actions
+- Full Docker Compose deployment (API + Frontend + PostgreSQL/pgvector)
+
+---
+
 ## [0.6.0] — 2026-04 — Sprint 6 : Polish & Documentation
 
 ### Added
