@@ -11,13 +11,21 @@ SEC 10-K filing analysis system with hybrid retrieval (BM25 + dense vectors + RR
 
 ## Screenshots
 
-| Search | Browse |
-|--------|--------|
-| ![Search page](docs/screenshots/search-page.png) | ![Browse page](docs/screenshots/browse-page.png) |
+### Search
 
-| Browse content | Documents |
-|----------------|-----------|
-| ![Browse content](docs/screenshots/browse-content.png) | ![Documents page](docs/screenshots/documents-page.png) |
+| Hero — pre-search state | Factual query (Dense) |
+|-------------------------|-----------------------|
+| ![Search hero](docs/screenshots/search-hero.png) | ![Factual query](docs/screenshots/search-factual.png) |
+
+| Analytical query — Hybrid + HyDE | Cross-company — All filings |
+|----------------------------------|----------------------------|
+| ![Analytical query](docs/screenshots/search-analytical.png) | ![Cross-company](docs/screenshots/search-cross-company.png) |
+
+### Browse & Documents
+
+| Browse — section content | Documents — filing management |
+|--------------------------|-------------------------------|
+| ![Browse content](docs/screenshots/browse-content.png) | ![Documents](docs/screenshots/documents-page.png) |
 
 ---
 
