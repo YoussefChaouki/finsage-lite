@@ -38,7 +38,7 @@ cd finsage-lite
 
 # 2 — Configure
 cp .env.example .env
-# Edit .env: set EDGAR_USER_AGENT to "YourApp yourname@email.com" (required by SEC)
+# Optional: override EDGAR_USER_AGENT with your own app name + email
 
 # 3 — Start services (FastAPI + PostgreSQL + pgvector + Ollama)
 make docker-up
@@ -249,7 +249,7 @@ Key settings via `.env` (see [.env.example](.env.example)):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `EDGAR_USER_AGENT` | — | **Required** by SEC (`"App name email@example.com"`) |
+| `EDGAR_USER_AGENT` | `FinSage-Lite (contact@example.com)` | SEC EDGAR identifier — override with your own name/email |
 | `EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | Sentence-transformers model name |
 | `CHUNK_SIZE` | `220` | Tokens per chunk |
 | `CHUNK_OVERLAP` | `50` | Token overlap between chunks |
@@ -262,7 +262,7 @@ Key settings via `.env` (see [.env.example](.env.example)):
 
 > **Security notes**
 > - Never commit `.env` — it is listed in `.gitignore`
-> - `EDGAR_USER_AGENT` must include a valid email address (SEC EDGAR requirement); startup will reject an agent string without `@`
+> - `EDGAR_USER_AGENT` defaults to `FinSage-Lite (contact@example.com)` — override it with your own app name/email if you prefer; if overridden, it must contain a valid `@` or startup will reject it
 > - Change `POSTGRES_PASSWORD` before deploying to production; the app logs a warning at startup if the default value is detected
 > - Restrict `CORS_ORIGINS` to your actual domain(s) in production
 
