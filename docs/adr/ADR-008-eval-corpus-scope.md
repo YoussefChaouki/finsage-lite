@@ -1,35 +1,35 @@
-# ADR-008 : Scope du corpus d'évaluation
+# ADR-008: Scope of the evaluation corpus
 
-## Statut : Accepté
+## Status: Accepted
 
 ## Date
 2026-03
 
-## Contexte
+## Context
 
-FinSage-Lite vise une évaluation rigoureuse de son pipeline RAG sur des questions financières
-réelles. PatronusAI/financebench est le dataset de référence public pour ce type de système :
-il contient des questions à réponse numérique/factuelle ancrées dans des filings SEC 10-K réels,
-avec des réponses vérifiées par des analystes financiers.
+FinSage-Lite aims for a rigorous evaluation of its RAG pipeline on real financial questions.
+PatronusAI/financebench is the public reference dataset for this kind of system: it contains
+numeric and factual questions grounded in real SEC 10-K filings, with answers verified by
+financial analysts.
 
-Le dataset compte **~150 questions** couvrant une quinzaine d'entreprises du S&P 500 sur des
-années fiscales variées (principalement FY2021–FY2023). Ingérer l'ensemble des filings
-correspondants représenterait ~15 documents PDF (coût en temps et stockage prohibitif pour un
-sprint d'évaluation). Il faut donc sélectionner un sous-ensemble représentatif.
+The dataset has **~150 questions** covering some fifteen S&P 500 companies across several
+fiscal years (mostly FY2021–FY2023). Ingesting every corresponding filing would mean ~15 PDF
+documents, a time and storage cost that is prohibitive for one evaluation sprint. A
+representative subset therefore has to be selected.
 
-Critères de sélection retenus :
-- Maximiser le nombre de questions couvertes
-- Minimiser le nombre de filings à ingérer (cible : 1 filing par entreprise)
-- Privilégier les entreprises avec ≥ 10 questions dans le dataset
-- Retenir 3–4 entreprises pour avoir une diversité sectorielle minimale
+Selection criteria:
+- Maximize the number of questions covered
+- Minimize the number of filings to ingest (target: 1 filing per company)
+- Prefer companies with ≥ 10 questions in the dataset
+- Keep 3–4 companies for a minimum of sector diversity
 
-Résultats de `make inspect-dataset` (exécuté le 2026-03-28) :
+Output of `make inspect-dataset` (run on 2026-03-28):
 
 ```
-Total questions : 150
-Entreprises représentées : 20+
+Total questions: 150
+Companies represented: 20+
 
-Top companies (par nombre de questions) :
+Top companies (by number of questions):
   PepsiCo                11  (FY2022: 5, FY2023: 5, FY2021: 1)
   Amcor                   9  (FY2023: 7, FY2022: 1, FY2020: 1)
   Johnson & Johnson       9  (FY2022: 5, FY2023: 4)
@@ -38,19 +38,19 @@ Top companies (par nombre de questions) :
   Best Buy                8
   Boeing                  8
 
-Categories (équilibrées à 50 chacune) :
+Categories (balanced at 50 each):
   metrics-generated : 50
   domain-relevant   : 50
   novel-generated   : 50
 
-Retenir : [PepsiCo FY2023, Amcor FY2023, Johnson & Johnson FY2022, 3M FY2023]
+Selected: [PepsiCo FY2023, Amcor FY2023, Johnson & Johnson FY2022, 3M FY2023]
 ```
 
-## Décision
+## Decision
 
-Retenir les entreprises et années fiscales suivantes pour le benchmark Sprint 4 :
+Use the following companies and fiscal years for the Sprint 4 benchmark:
 
-| Entreprise | Ticker | Fiscal Year | Questions couvertes |
+| Company | Ticker | Fiscal Year | Questions covered |
 |-----------|--------|-------------|---------------------|
 | PepsiCo | PEP | FY2023 | 5 |
 | Amcor | AMCR | FY2023 | 7 |
@@ -58,36 +58,34 @@ Retenir les entreprises et années fiscales suivantes pour le benchmark Sprint 4
 | 3M | MMM | FY2023 | 3 |
 | **Total** | | | **20 / 150 (13.3%)** |
 
-Critère de sélection de l'année fiscale : année la mieux représentée par entreprise
-(tie-break : année la plus récente).
+Fiscal-year selection rule: the best-represented year per company
+(tie-break: the most recent year).
 
-## Justification
+## Rationale
 
-1. **Couverture maximale** : Les 3–4 entreprises les plus représentées dans financebench
-   concentrent la majorité des questions, permettant une évaluation statistiquement significative.
+1. **Maximum coverage**: the 3–4 best-represented companies in financebench hold the largest
+   share of questions, which gives the most questions per ingested filing.
 
-2. **Coût d'ingestion minimal** : En retenant une seule année fiscale par entreprise
-   (la plus représentée dans le dataset), on limite l'ingestion à 3–4 filings 10-K,
-   soit quelques minutes de traitement.
+2. **Minimal ingestion cost**: keeping a single fiscal year per company (the best represented
+   in the dataset) limits ingestion to 3–4 10-K filings, a few minutes of processing.
 
-3. **Diversité sectorielle** : financebench couvre tech, finance, industrie et énergie.
-   La sélection par volume de questions préserve naturellement cette diversité puisque
-   les grandes capitalisations sont sur-représentées dans le dataset.
+3. **Sector diversity**: financebench covers tech, finance, industry and energy. Selecting by
+   question volume naturally preserves that diversity, since large caps are over-represented
+   in the dataset.
 
-4. **Reproductibilité** : Les filings SEC sont publics et permanents sur EDGAR.
-   Le benchmark peut être re-exécuté par n'importe quel contributeur.
+4. **Reproducibility**: SEC filings are public and permanent on EDGAR. Any contributor can
+   re-run the benchmark.
 
-## Conséquences
+## Consequences
 
-- **Couverture effective** : 20 / 150 questions (13.3%) — intentionnellement limité à 4 filings.
-  L'estimation initiale de 60–80% supposait une sélection multi-années ; la contrainte
-  « 1 filing par entreprise » ramène à 13.3%, statistiquement suffisant pour comparer
-  les configurations entre elles.
-- **Filings à ingérer** : 4 documents (PEP FY2023, AMCR FY2023, JNJ FY2022, MMM FY2023).
-- **Métriques cibles Sprint 4** : Recall@5 ≥ 85% sur la meilleure config (objectif principal).
-  F1 token-level ≥ 0.40 sur les questions avec génération activée.
-- **Catégories** : les 3 catégories de financebench (metrics-generated, domain-relevant,
-  novel-generated) sont équilibrées à 50 chacune ; le sous-corpus de 20 questions reflète
-  cette distribution.
-- **Limitation** : Les 130 questions hors corpus sont exclues de l'évaluation automatique.
-  Elles peuvent servir à tester la robustesse sur des entreprises inconnues (zéro-shot).
+- **Effective coverage**: 20 / 150 questions (13.3%), intentionally limited to 4 filings.
+  The initial estimate of 60–80% assumed a multi-year selection; the "1 filing per company"
+  constraint brings it down to 13.3%, enough to compare configurations against each other.
+- **Filings to ingest**: 4 documents (PEP FY2023, AMCR FY2023, JNJ FY2022, MMM FY2023).
+- **Sprint 4 target metrics**: Recall@5 ≥ 85% on the best configuration (main objective).
+  Token-level F1 ≥ 0.40 on questions with generation enabled.
+- **Categories**: the 3 financebench categories (metrics-generated, domain-relevant,
+  novel-generated) are balanced at 50 each; the 20-question sub-corpus reflects that
+  distribution.
+- **Limitation**: the 130 out-of-corpus questions are excluded from automatic evaluation.
+  They can be used to test robustness on unseen companies (zero-shot).
