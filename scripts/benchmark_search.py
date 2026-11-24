@@ -212,14 +212,14 @@ def _generate_report(
     lines: list[str] = [
         "# FinSage-Lite — Search Latency Benchmarks",
         "",
-        f"**Date** : {now}",
-        f"**Environnement** : {os_name}, Docker, pgvector",
-        f"**Dataset** : {nb_chunks} chunks (AAPL FY2024)",
-        f"**Runs par query** : {runs}",
+        f"**Date**: {now}",
+        f"**Environment**: {os_name}, Docker, pgvector",
+        f"**Dataset**: {nb_chunks} chunks (AAPL FY2024)",
+        f"**Runs per query**: {runs}",
         "",
-        "## Résultats",
+        "## Results",
         "",
-        "| Mode    | P50 (ms) | P95 (ms) | P99 (ms) | Avg résultats |",
+        "| Mode    | P50 (ms) | P95 (ms) | P99 (ms) | Avg results   |",
         "|---------|----------|----------|----------|---------------|",
     ]
 
@@ -233,9 +233,9 @@ def _generate_report(
 
     lines += [
         "",
-        "## Objectifs",
+        "## Targets",
         "",
-        "| Mode    | Cible    | Statut |",
+        "| Mode    | Target   | Status |",
         "|---------|----------|--------|",
     ]
 
@@ -250,12 +250,12 @@ def _generate_report(
         "",
         "## Notes",
         "",
-        "- Index BM25 : in-memory, reconstruit au démarrage",
-        "- Dense : pgvector ivfflat cosine, lists=100",
-        "- HyDE non inclus dans ces benchmarks (dépend d'Ollama)",
-        f"- Queries testées : {len(BENCHMARK_QUERIES)} ({runs} runs each)",
+        "- BM25 index: in-memory, rebuilt at startup",
+        "- Dense: pgvector ivfflat cosine, lists=100",
+        "- HyDE is not included in these benchmarks (it depends on Ollama)",
+        f"- Queries tested: {len(BENCHMARK_QUERIES)} ({runs} runs each)",
         "",
-        "## Détails par mode",
+        "## Details per mode",
         "",
     ]
 
